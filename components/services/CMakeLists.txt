@@ -1,0 +1,11 @@
+idf_component_register(
+    SRCS 
+        "modbus_service.c"
+    INCLUDE_DIRS 
+        "."
+    REQUIRES
+        devices 
+        network
+        storage
+        utils
+)
