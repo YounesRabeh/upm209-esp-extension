@@ -1,6 +1,6 @@
 idf_component_register(
     SRCS 
-        "connection.c"
+        "internet.c"
     INCLUDE_DIRS 
         "."
     REQUIRES
