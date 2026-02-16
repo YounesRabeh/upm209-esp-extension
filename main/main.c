@@ -12,10 +12,14 @@
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_system.h"
+#include "logging.h"
+
+#define TAG "MAIN"
 
 void app_main(void)
 {
-    printf("Hello world!\n");
+    LOG_INFO(TAG, "Hello world!\n");
+
 
     /* Print chip information */
     esp_chip_info_t chip_info;

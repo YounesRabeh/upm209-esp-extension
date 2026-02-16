@@ -1,33 +1,33 @@
-#include <stdio.h>
-#include <string.h>
-#include "esp_log.h"
-#include "esp_err.h"
+#include "logging.h"
 
+/**
+ * @file logging.c
+ * @brief Implementation of formatted logging functions.
+ */
 
+/**
+ * @brief Print a padded tag to the console.
+ *
+ * Converts the tag into a fixed-width format and prints in white color.
+ *
+ * @param tag Module or component name.
+ */
+void log_print_tag(const char *tag) {
+    char tag_buf[32];
+    snprintf(tag_buf, sizeof(tag_buf), "<%s>", tag);
+    printf(COLOR_WHITE TAG_SIZE, tag_buf);
+}
 
-#define TAG_SIZE "%-12s"
-
-#define COLOR_RESET    "\033[0m"
-#define COLOR_WHITE    "\033[0;37m"
-#define COLOR_GREEN    "\033[0;32m"
-#define COLOR_YELLOW   "\033[0;33m"
-#define COLOR_RED      "\033[0;31m"
-#define COLOR_PURPLE   "\033[0;35m"
-
-// padded tag t
-#define PRINT_TAG(tag) do { \
-    char tag_buf[32]; \
-    snprintf(tag_buf, sizeof(tag_buf), "<%s>", tag); \
-    printf(COLOR_WHITE TAG_SIZE, tag_buf); \
-} while(0)
-
-// Log an information (regular) 
-#define LOG_INFO(tag, format, ...)    do { PRINT_TAG(tag); printf(COLOR_WHITE " [INFO]: " format COLOR_RESET "\n", ##__VA_ARGS__); } while(0)
-// Log a debug message, for debugging purposes (purple)
-#define LOG_DEBUG(tag, format, ...)   do { PRINT_TAG(tag); printf(COLOR_PURPLE " [DEBUG]: " format COLOR_RESET "\n", ##__VA_ARGS__); } while(0)
-// Log a success message (green)
-#define LOG_SUCCESS(tag, format, ...) do { PRINT_TAG(tag); printf(COLOR_GREEN " [OK]: " format COLOR_RESET "\n", ##__VA_ARGS__); } while(0)
-// Log a warning message (yellow)
-#define LOG_WARNING(tag, format, ...) do { PRINT_TAG(tag); printf(COLOR_YELLOW " [WARN]: " format COLOR_RESET "\n", ##__VA_ARGS__); } while(0)
-// Log an error message (red)
-#define LOG_ERROR(tag, format, ...)   do { PRINT_TAG(tag); printf(COLOR_RED " [ERROR]: " format COLOR_RESET "\n", ##__VA_ARGS__); } while(0)
+/**
+ * @brief Print a formatted log message with color and log level.
+ *
+ * @param color ANSI color code string.
+ * @param level_str Log level string (e.g., "[INFO]: ").
+ * @param fmt printf-style format string.
+ * @param args va_list of arguments.
+ */
+void log_vprintf(const char *color, const char *level_str, const char *fmt, va_list args) {
+    printf("%s%s", color, level_str);
+    vprintf(fmt, args);
+    printf(COLOR_RESET "\n");
+}
