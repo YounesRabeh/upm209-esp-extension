@@ -1,0 +1,20 @@
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  "idf.espIdfPath": "/home/yuyu/esp/v5.4.1/esp-idf",
+  "idf.pythonInstallPath": "/usr/bin/python",
+  "idf.openOcdConfigs": [
+    "board/esp32s3-builtin.cfg"
+  ],
+  "idf.port": "detect",
+  "idf.toolsPath": "/home/yuyu/.espressif",
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32s3"
+  },
+  "clangd.path": "/home/yuyu/.espressif/tools/esp-clang/esp-18.1.2_20240912/esp-clang/bin/clangd",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=**",
+    "--compile-commands-dir=/home/yuyu/Desktop/progetto-tesi/ump209-esp-extension/build"
+  ],
+  "idf.currentSetup": "/home/yuyu/esp/v5.4.1/esp-idf"
+}
