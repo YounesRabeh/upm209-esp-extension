@@ -51,7 +51,7 @@ static inline void log_printf_helper(
 #define LOG_DEBUG(tag, format, ...)   \
     do { log_printf_helper(COLOR_PURPLE, tag, " [DEBUG]: ", format, ##__VA_ARGS__); } while(0)
 
-#define LOG_SUCCESS(tag, format, ...) \
+#define LOG_OK(tag, format, ...) \
     do { log_printf_helper(COLOR_GREEN,  tag, " [OK]: ",    format, ##__VA_ARGS__); } while(0)
 
 #define LOG_WARNING(tag, format, ...) \
