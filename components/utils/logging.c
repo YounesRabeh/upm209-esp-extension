@@ -7,7 +7,6 @@
 
 /**
  * @brief Print a padded tag to the console.
- *
  * Converts the tag into a fixed-width format and prints in white color.
  *
  * @param tag Module or component name.
