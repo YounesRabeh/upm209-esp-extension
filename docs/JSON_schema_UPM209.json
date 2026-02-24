@@ -1,0 +1,74 @@
+{
+	"schemaID" : "schemaUNICAM",
+	
+	"type": "object",
+	"properties": {
+		"companyID": {
+			"type": "string",
+			"description": "company name"
+	  	},
+	    "schemaID": {
+			"type": "string",
+			"description": "ID used to validate data"
+	  	},
+		"timestamp" : {
+			"type" : "integer",
+			"minimum" : 0,
+			"exclusiveMinimum" : true,
+			"description": "unixtime data retrieved"
+		},
+		"device_id": {
+			"type": "string",
+			"description": "serial number of the device"
+		},
+		"firmware_version": {
+			"type": "string",
+			"description": "firmware version current working on device"
+		},
+		"device_type": {
+			"type": "string",
+			"description": "short description"
+		},
+		"measurements": {
+			"type": "array",
+			"minItems" : 1,
+			"items": {
+		  		"type": "object",
+		  		"properties": {
+				"num_reg": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "register number"
+				},
+				"value": {
+			  		"type": "number",
+					"description": "value of data read"
+				},
+				"word": {
+			  		"type": "integer",
+			  		"minimum": 1,
+					"description": "natural dimension of data"
+				},
+				"min": {
+			  		"type": "number",
+					"description": "minimum value read"
+				},
+				"max": {
+			  		"type": "number",
+					"description": "maximum value read"
+				},
+				"unit" : {
+					"type": "string",
+					"description": "unit measure of data"
+				},
+				"description": {
+                	"type": "string",
+					"description": "short description or name of data read"
+            	}
+			},
+		"required": ["num_reg", "value", "word", "unit", "min", "max", "description"]
+		}
+	  }
+	},
+	"required": ["companyID", "schemaID", "timestamp", "device_id", "firmware_version", "device_type", "measurements"]
+  }

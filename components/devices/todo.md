@@ -15,7 +15,4 @@ Provide device-specific APIs
 Hide protocol details from upper layers
 
 Files
-
-multimeter.c
-
-multimeter.h
+target_reg
