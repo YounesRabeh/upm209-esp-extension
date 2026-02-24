@@ -1,8 +1,10 @@
 idf_component_register(
     SRCS 
         "modbus_master.c"
+        "modbus_crc.c"
     INCLUDE_DIRS 
         "."
-    REQUIRES
+    REQUIRES 
+        driver
         utils
 )

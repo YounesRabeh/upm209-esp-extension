@@ -18,7 +18,7 @@
 
 void app_main(void)
 {
-    LOG_INFO(TAG, "Hello world!\n");
+    LOG_DEBUG(TAG, "Hello world!\n");
 
 
     /* Print chip information */
