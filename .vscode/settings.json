@@ -17,5 +17,6 @@
     "--compile-commands-dir=/home/yuyu/Desktop/progetto-tesi/ump209-esp-extension/build"
   ],
   "idf.currentSetup": "/home/yuyu/esp/v5.4.1/esp-idf",
-  "idf.flashType": "UART"
+  "idf.flashType": "UART",
+  "markdown.validate.enabled": false
 }

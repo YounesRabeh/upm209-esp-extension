@@ -22,7 +22,7 @@ void log_vprintf(
     const char *fmt,
     va_list args
 ) {
-    printf("%s<%s>%s", color, tag, level_str);
+    printf("%s[%s] <%s> : ", color, level_str, tag);
     vprintf(fmt, args);
     printf(COLOR_RESET "\n");
 }

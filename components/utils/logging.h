@@ -20,7 +20,7 @@
  *
  * @param color ANSI color code.
  * @param tag Component/module name.
- * @param level_str Log level string (e.g. "[INFO]: ").
+ * @param level_str Log level string (e.g. "INFO").
  * @param fmt printf-style format string.
  * @param args va_list arguments.
  */
@@ -45,17 +45,8 @@ static inline void log_printf_helper(
 }
 
 /* Logging macros */
-#define LOG_INFO(tag, format, ...)    \
-    do { log_printf_helper(COLOR_WHITE,  tag, " [INFO]: ",  format, ##__VA_ARGS__); } while(0)
-
-#define LOG_DEBUG(tag, format, ...)   \
-    do { log_printf_helper(COLOR_PURPLE, tag, " [DEBUG]: ", format, ##__VA_ARGS__); } while(0)
-
-#define LOG_OK(tag, format, ...) \
-    do { log_printf_helper(COLOR_GREEN,  tag, " [OK]: ",    format, ##__VA_ARGS__); } while(0)
-
-#define LOG_WARNING(tag, format, ...) \
-    do { log_printf_helper(COLOR_YELLOW, tag, " [WARN]: ",  format, ##__VA_ARGS__); } while(0)
-
-#define LOG_ERROR(tag, format, ...)   \
-    do { log_printf_helper(COLOR_RED,    tag, " [ERROR]: ", format, ##__VA_ARGS__); } while(0)
+#define LOG_INFO(tag, format, ...) do { log_printf_helper(COLOR_WHITE,  tag, "INFO",  format, ##__VA_ARGS__); } while(0)
+#define LOG_DEBUG(tag, format, ...) do { log_printf_helper(COLOR_PURPLE, tag, "DEBUG", format, ##__VA_ARGS__); } while(0)
+#define LOG_OK(tag, format, ...) do { log_printf_helper(COLOR_GREEN,  tag, "OK",    format, ##__VA_ARGS__); } while(0)
+#define LOG_WARNING(tag, format, ...) do { log_printf_helper(COLOR_YELLOW, tag, "WARN",  format, ##__VA_ARGS__); } while(0)
+#define LOG_ERROR(tag, format, ...) do { log_printf_helper(COLOR_RED,    tag, "ERROR", format, ##__VA_ARGS__); } while(0)

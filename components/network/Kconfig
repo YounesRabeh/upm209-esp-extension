@@ -1,0 +1,70 @@
+menu "Internet Configuration"
+
+
+config INTERNET_TARGET_URL
+    string "Remote Internet target URL"
+    default "https://blockboxchain-api.beesoft.it/saveData"
+    help
+      URL where all internet data should be sent.
+      Example: http://myserver.com/api/data
+
+choice INTERNET_NETWORK_TYPE
+    prompt "Preferred network type"
+    default INTERNET_NETWORK_AUTO
+
+config INTERNET_NETWORK_AUTO
+    bool "AUTO (WiFi first, then LTE fallback)"
+
+config INTERNET_NETWORK_WIFI_ONLY
+    bool "WiFi only"
+
+config INTERNET_NETWORK_LTE_ONLY
+    bool "LTE only"
+
+endchoice
+
+config WIFI_CONNECT_TIMEOUT_MS
+    int "WiFi connect timeout per attempt (ms)"
+    default 8000
+    range 1000 60000
+
+config WIFI_CONNECT_RETRIES
+    int "WiFi connect retries"
+    default 3
+    range 1 20
+
+config WIFI_SSID
+    string "WiFi SSID"
+    default ""
+
+config WIFI_PASSWORD
+    string "WiFi password"
+    depends on WIFI_AUTH_WPA2_PSK || WIFI_AUTH_WPA2_ENTERPRISE
+    default ""
+
+config WIFI_USERNAME
+    string "WiFi enterprise username"
+    depends on WIFI_AUTH_WPA2_ENTERPRISE
+    default ""
+
+config WIFI_EAP_IDENTITY
+    string "WiFi enterprise identity (optional)"
+    depends on WIFI_AUTH_WPA2_ENTERPRISE
+    default ""
+
+choice WIFI_AUTH_MODE
+    prompt "WiFi authentication mode"
+    default WIFI_AUTH_WPA2_PSK
+
+config WIFI_AUTH_OPEN
+    bool "Open"
+
+config WIFI_AUTH_WPA2_PSK
+    bool "WPA2-PSK"
+
+config WIFI_AUTH_WPA2_ENTERPRISE
+    bool "WPA2-Enterprise"
+
+endchoice
+
+endmenu

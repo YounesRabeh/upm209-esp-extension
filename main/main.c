@@ -7,12 +7,13 @@
 #include "esp_flash.h"
 #include "esp_system.h"
 #include "logging.h"
+#include "internet.h"
 
 #define TAG "MAIN"
 
 void app_main(void)
 {
-    LOG_OK(TAG, "Hello world!");
+    LOG_OK(TAG, "--- STARTING ---");
 
 
     /* Print chip information */
@@ -39,4 +40,13 @@ void app_main(void)
            (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
 
     LOG_DEBUG(TAG, "Minimum free heap size: %" PRIu32 " bytes", esp_get_minimum_free_heap_size());
+
+     ESP_ERROR_CHECK(internet_init());
+
+    if (internet_connect() != ESP_OK) {
+        LOG_ERROR(TAG, "Failed to connect to internet");
+    } else {
+        LOG_OK(TAG, "Internet connected successfully");
+    }
+
 }
