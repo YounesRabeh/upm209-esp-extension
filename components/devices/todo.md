@@ -16,3 +16,18 @@ Hide protocol details from upper layers
 
 Files
 target_reg
+
+
+
+Window = 10 campioni (1 secondo)
+
+Pipeline:
+1) Validazione
+2) Median-of-3
+3) Buffer 10 valori
+4) Trimmed mean (salva  min e max)
+5) Peak confirm ≥2 campioni
+
+-----------
+
+Hampel  - troppo forte
