@@ -2,12 +2,12 @@
 #include <inttypes.h>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_system.h"
 #include "logging.h"
 #include "internet.h"
+#include "services_manager.h"
 
 #define TAG "MAIN"
 
@@ -47,6 +47,11 @@ void app_main(void)
         LOG_ERROR(TAG, "Failed to connect to internet");
     } else {
         LOG_OK(TAG, "Internet connected successfully");
+        if (services_manager_start_post_network() != ESP_OK) {
+            LOG_ERROR(TAG, "Failed to start post-network services");
+        }
     }
+
+    LOG_OK(TAG, "--- MAIN TASK END ---");
 
 }
