@@ -10,10 +10,11 @@ Provide data transmission APIs
 
 Handle reconnect logic
 
-Abstract communication protocols (MQTT/HTTP/etc.)
+Abstract communication protocols (HTTP/etc.)
 
 Files
 
 internnet.c
 
 internnet.h
+
