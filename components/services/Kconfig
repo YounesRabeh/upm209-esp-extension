@@ -1,0 +1,44 @@
+menu "Services Configuration"
+
+menuconfig TIME_SERVICE_ENABLE
+    bool "Time Service"
+    default y
+
+if TIME_SERVICE_ENABLE
+
+config TIME_SERVICE_TZ
+    string "Time zone (TZ string)"
+    default "CET-1CEST,M3.5.0/2,M10.5.0/3"
+    help
+      POSIX TZ string used to convert local time.
+
+config TIME_SERVICE_SYNC_TIMEOUT_MS
+    int "Time sync timeout (ms)"
+    default 15000
+    range 1000 120000
+
+config TIME_SERVICE_NTP_SERVER_1
+    string "Primary NTP server"
+    default "time.google.com"
+
+config TIME_SERVICE_NTP_SERVER_2
+    string "Secondary NTP server"
+    default "pool.ntp.org"
+    depends on LWIP_SNTP_MAX_SERVERS > 1
+
+endif
+
+menuconfig MEMORY_SERVICE_ENABLE
+    bool "Memory Service"
+    default n
+
+if MEMORY_SERVICE_ENABLE
+
+config MEMORY_SERVICE_PERIOD_MS
+    int "Memory monitor period (ms)"
+    default 5000
+    range 500 60000
+
+endif
+
+endmenu
