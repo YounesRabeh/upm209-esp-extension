@@ -24,7 +24,9 @@ esp_err_t internet_send_data(const char *json_payload) {
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
+    //TODO: add the actual json payload and set the appropriate headers 
     esp_http_client_set_header(client, "Content-Type", "application/json");
+    
     esp_http_client_set_post_field(client, json_payload, strlen(json_payload));
 
     esp_err_t err = esp_http_client_perform(client);

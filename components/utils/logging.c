@@ -3,7 +3,9 @@
 /**
  * @file logging.c
  * @brief Implementation of formatted logging functions.
- */
+*/
+
+
 
 /**
  * @brief Print a padded tag to the console.

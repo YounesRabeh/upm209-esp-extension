@@ -32,6 +32,10 @@ void log_vprintf(
     va_list args
 );
 
+/** 
+ * @brief Helper function to format log messages with variable arguments.
+ * This is used by the LOG_* macros to avoid code duplication.
+ */
 static inline void log_printf_helper(
     const char *color,
     const char *tag,
