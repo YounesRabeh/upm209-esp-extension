@@ -274,6 +274,7 @@ esp_err_t wifi_connect_retry(const wifi_config_t *cfg, int timeout_ms, int retry
 
 
 
+
 esp_err_t wifi_disconnect(void) {
     if (!wifi_initialized) return ESP_ERR_INVALID_STATE;
     return esp_wifi_disconnect();

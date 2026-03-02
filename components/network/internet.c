@@ -12,7 +12,7 @@
 #define TAG "INTERNET"
 
 #ifndef CONFIG_WIFI_CONNECT_TIMEOUT_MS
-#define CONFIG_WIFI_CONNECT_TIMEOUT_MS 8000
+#define CONFIG_WIFI_CONNECT_TIMEOUT_MS 5000
 #endif
 
 #ifndef CONFIG_WIFI_CONNECT_RETRIES
@@ -63,7 +63,8 @@ static esp_err_t connect_wifi_from_config(void) {
     return wifi_connect_retry(&wifi_cfg, timeout_ms, retries);
 }
 
-/* --- Initialize internet stack (NVS, network, WiFi, LTE) --- */
+
+
 esp_err_t internet_init(void) {
     if (internet_initialized) return ESP_OK;
 
@@ -95,11 +96,7 @@ esp_err_t internet_init(void) {
     return ESP_OK;
 }
 
-/**
- * Attempt to connect to the internet dynamically:
- * - First WiFi with retries
- * - Fallback to LTE if WiFi fails
- */
+
 esp_err_t internet_connect(void) {
     esp_err_t err = ESP_FAIL;
     active_if = INTERNET_IF_NONE;
@@ -145,7 +142,7 @@ esp_err_t internet_connect(void) {
 #endif
 }
 
-/* --- Check if any internet interface is connected --- */
+
 bool internet_is_connected(void) {
     if (wifi_is_connected()) return true;
     if (lte_is_connected()) return true;
