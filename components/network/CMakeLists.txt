@@ -1,13 +1,14 @@
 idf_component_register(
     SRCS 
         "internet.c"
+        "internet_send.c"
     INCLUDE_DIRS 
         "."
     REQUIRES
-        lte
-        wifi
         utils
     PRIV_REQUIRES 
+        lte
+        wifi
         esp_wifi
         esp_http_client
         nvs_flash
