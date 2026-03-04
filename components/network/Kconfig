@@ -33,6 +33,11 @@ config WIFI_CONNECT_RETRIES
     default 3
     range 1 20
 
+config WIFI_CONNECT_RETRY_DELAY_MS
+    int "WiFi delay between retries (ms)"
+    default 500
+    range 0 60000
+
 config WIFI_SSID
     string "WiFi SSID"
     default ""

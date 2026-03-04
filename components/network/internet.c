@@ -19,6 +19,10 @@
 #define CONFIG_WIFI_CONNECT_RETRIES 3
 #endif
 
+#ifndef CONFIG_WIFI_CONNECT_RETRY_DELAY_MS
+#define CONFIG_WIFI_CONNECT_RETRY_DELAY_MS 500
+#endif
+
 static bool internet_initialized = false;
 static internet_if_t active_if = INTERNET_IF_NONE;
 
@@ -36,6 +40,7 @@ static esp_err_t connect_wifi_from_config(void) {
     wifi_config_t wifi_cfg = {0};
     const int timeout_ms = CONFIG_WIFI_CONNECT_TIMEOUT_MS;
     const int retries = CONFIG_WIFI_CONNECT_RETRIES;
+    const int retry_delay_ms = CONFIG_WIFI_CONNECT_RETRY_DELAY_MS;
 
     if (strlen(CONFIG_WIFI_SSID) == 0) {
         LOG_ERROR(TAG, "WiFi SSID not configured");
@@ -59,8 +64,8 @@ static esp_err_t connect_wifi_from_config(void) {
 #endif
 
     LOG_DEBUG(TAG, "WiFi target SSID: %s", (const char *)wifi_cfg.sta.ssid);
-    LOG_DEBUG(TAG, "WiFi retries=%d timeout_ms=%d", retries, timeout_ms);
-    return wifi_connect_retry(&wifi_cfg, timeout_ms, retries);
+    LOG_DEBUG(TAG, "WiFi retries=%d timeout_ms=%d retry_delay_ms=%d", retries, timeout_ms, retry_delay_ms);
+    return wifi_connect_retry(&wifi_cfg, timeout_ms, retries, retry_delay_ms);
 }
 
 
@@ -68,7 +73,7 @@ static esp_err_t connect_wifi_from_config(void) {
 esp_err_t internet_init(void) {
     if (internet_initialized) return ESP_OK;
 
-    // --- Initialize NVS (required for WiFi) ---
+    // --- Initialize NVS (needed for WiFi) ---
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());

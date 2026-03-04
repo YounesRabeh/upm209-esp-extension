@@ -1,6 +1,4 @@
 #include "internet.h"
-#include "wifi.h"
-#include "lte.h"
 #include "sdkconfig.h"
 #include "esp_log.h"
 #include "esp_err.h"

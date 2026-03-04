@@ -14,8 +14,6 @@
 
 #define TAG "WIFI"
 #define WIFI_CONNECTED_BIT BIT0
-#define WIFI_SCAN_LIST_SIZE 20
-
 static EventGroupHandle_t wifi_event_group;
 static esp_netif_t *wifi_netif = NULL;
 static bool wifi_initialized = false;
@@ -77,25 +75,13 @@ static esp_err_t wifi_configure_enterprise(void) {
 #endif
 }
 
-static const char *wifi_auth_mode_to_str(wifi_auth_mode_t mode) {
-    switch (mode) {
-        case WIFI_AUTH_OPEN: return "OPEN";
-        case WIFI_AUTH_WEP: return "WEP";
-        case WIFI_AUTH_WPA_PSK: return "WPA_PSK";
-        case WIFI_AUTH_WPA2_PSK: return "WPA2_PSK";
-        case WIFI_AUTH_WPA_WPA2_PSK: return "WPA_WPA2_PSK";
-        case WIFI_AUTH_WPA2_ENTERPRISE: return "WPA2_ENTERPRISE";
-        case WIFI_AUTH_WPA3_PSK: return "WPA3_PSK";
-        case WIFI_AUTH_WPA2_WPA3_PSK: return "WPA2_WPA3_PSK";
-        default: return "UNKNOWN";
-    }
-}
+static esp_err_t wifi_target_ssid_found(const uint8_t *ssid, bool *found) {
+    if (!ssid || !found || strlen((const char *)ssid) == 0) return ESP_ERR_INVALID_ARG;
 
-static esp_err_t wifi_scan_and_log(void) {
     wifi_scan_config_t scan_cfg = {0};
-    wifi_ap_record_t ap_records[WIFI_SCAN_LIST_SIZE] = {0};
-    uint16_t ap_count = WIFI_SCAN_LIST_SIZE;
-    uint16_t total_ap = 0;
+    uint16_t ap_count = 0;
+
+    scan_cfg.ssid = (uint8_t *)ssid;
 
     esp_err_t err = esp_wifi_scan_start(&scan_cfg, true);
     if (err != ESP_OK) {
@@ -103,31 +89,14 @@ static esp_err_t wifi_scan_and_log(void) {
         return err;
     }
 
-    err = esp_wifi_scan_get_ap_num(&total_ap);
+    err = esp_wifi_scan_get_ap_num(&ap_count);
     if (err != ESP_OK) {
         LOG_WARNING(TAG, "Scan get AP num failed: 0x%x", err);
         return err;
     }
 
-    err = esp_wifi_scan_get_ap_records(&ap_count, ap_records);
-    if (err != ESP_OK) {
-        LOG_WARNING(TAG, "Scan get AP records failed: 0x%x", err);
-        return err;
-    }
-
-    LOG_DEBUG(TAG, "Scan completed: total_ap=%u (showing=%u)", (unsigned)total_ap, (unsigned)ap_count);
-    for (uint16_t i = 0; i < ap_count; i++) {
-        LOG_DEBUG(
-            TAG,
-            "AP[%u] ssid=\"%s\" rssi=%d auth=%s channel=%u",
-            (unsigned)i,
-            (const char *)ap_records[i].ssid,
-            ap_records[i].rssi,
-            wifi_auth_mode_to_str(ap_records[i].authmode),
-            (unsigned)ap_records[i].primary
-        );
-    }
-    if (total_ap > ap_count) LOG_DEBUG(TAG, "AP list truncated to %u entries", (unsigned)ap_count);
+    *found = ap_count > 0;
+    LOG_DEBUG(TAG, "Target SSID \"%s\" %s", (const char *)ssid, *found ? "found" : "not found");
     return ESP_OK;
 }
 
@@ -216,13 +185,28 @@ esp_err_t wifi_connect(const wifi_config_t *cfg) {
  * @param cfg WiFi configuration
  * @param timeout_ms maximum time to wait for connection
  * @param retry_count number of times to retry
+ * @param retry_delay_ms delay between retries in milliseconds
  * @return ESP_OK if connected, else ESP_FAIL
  */
-esp_err_t wifi_connect_retry(const wifi_config_t *cfg, int timeout_ms, int retry_count) {
+esp_err_t wifi_connect_retry(const wifi_config_t *cfg, int timeout_ms, int retry_count, int retry_delay_ms) {
     esp_err_t err = ESP_FAIL;
+    bool ssid_found = false;
 
-    LOG_DEBUG(TAG, "Retry connect config: timeout_ms=%d retries=%d", timeout_ms, retry_count);
-    wifi_scan_and_log();
+    if (!cfg) return ESP_ERR_INVALID_ARG;
+    if (retry_delay_ms < 0) return ESP_ERR_INVALID_ARG;
+
+    LOG_DEBUG(TAG, "Retry connect config: timeout_ms=%d retries=%d retry_delay_ms=%d",
+              timeout_ms, retry_count, retry_delay_ms);
+
+    err = wifi_target_ssid_found(cfg->sta.ssid, &ssid_found);
+    if (err != ESP_OK) {
+        LOG_WARNING(TAG, "Target SSID scan failed: 0x%x", err);
+        return err;
+    }
+    if (!ssid_found) {
+        LOG_WARNING(TAG, "Target SSID \"%s\" is not visible", (const char *)cfg->sta.ssid);
+        return ESP_ERR_NOT_FOUND;
+    }
 
     // Prepare auth environment once before connect attempts.
     err = wifi_configure_enterprise();
@@ -246,7 +230,7 @@ esp_err_t wifi_connect_retry(const wifi_config_t *cfg, int timeout_ms, int retry
         if (err != ESP_OK) {
             LOG_WARNING(TAG, "esp_wifi_connect() returned 0x%x, retrying...", err);
         } else {
-            // Wait for connection event
+            // Wait for connection 'evento'
             int wait_ticks = pdMS_TO_TICKS(timeout_ms);
             int bits = xEventGroupWaitBits(
                 wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, wait_ticks
@@ -265,8 +249,9 @@ esp_err_t wifi_connect_retry(const wifi_config_t *cfg, int timeout_ms, int retry
             }
         }
 
-        // Delay before next retry
-        vTaskDelay(pdMS_TO_TICKS(500));  // 500ms pause between retries
+        if (i + 1 < retry_count && retry_delay_ms > 0) {
+            vTaskDelay(pdMS_TO_TICKS(retry_delay_ms));
+        }
     }
 
     return err; // failed after all retries

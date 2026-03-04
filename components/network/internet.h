@@ -35,3 +35,10 @@ bool internet_is_connected(void);
  * INTERNET_IF_WIFI, INTERNET_IF_LTE, o INTERNET_IF_NONE se non connesso
  */
 internet_if_t internet_active_interface(void);
+
+/**
+ * @brief Sends a JSON payload through the active internet connection.
+ * @param json_payload Null-terminated JSON payload to send.
+ * @return ESP_OK on success, or an error code on failure.
+ */
+esp_err_t internet_send_data(const char *json_payload);
