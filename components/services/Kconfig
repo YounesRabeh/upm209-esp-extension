@@ -1,5 +1,11 @@
 menu "Services Configuration"
 
+menuconfig INTERNET_SERVICE_ENABLE
+    bool "Internet Service"
+    default y
+    help
+      Enable internet module init/connect from services manager.
+
 menuconfig STORAGE_SERVICE_ENABLE
     bool "Storage Service"
     default y
