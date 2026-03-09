@@ -14,10 +14,13 @@
 
 #define TAG "WIFI"
 #define WIFI_CONNECTED_BIT BIT0
+// Event group and state variables
 static EventGroupHandle_t wifi_event_group;
+// Network interface handle for WiFi station
 static esp_netif_t *wifi_netif = NULL;
+// Initialization state flag
 static bool wifi_initialized = false;
-
+// Forward declarations of internal functions
 static esp_err_t wifi_configure_enterprise(void) {
 #if CONFIG_WIFI_AUTH_WPA2_ENTERPRISE
     const char *username = CONFIG_WIFI_USERNAME;
