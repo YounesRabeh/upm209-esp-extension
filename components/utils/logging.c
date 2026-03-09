@@ -1,11 +1,5 @@
 #include "logging.h"
 
-/**
- * @file logging.c
- * @brief Implementation of formatted logging functions.
-*/
-
-
 
 /**
  * @brief Print a padded tag to the console.
@@ -17,6 +11,10 @@ void log_print_tag(const char *tag) {
     printf(COLOR_WHITE "<%s>", tag);
 }
 
+/**
+ * @brief Print a formatted log message with color coding.
+ * The message is prefixed with the log level and tag, and colored according to the log
+ */
 void log_vprintf(
     const char *color,
     const char *tag,

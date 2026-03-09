@@ -11,6 +11,7 @@ Provide data transmission APIs
 Handle reconnect logic
 
 Abstract communication protocols (HTTP/etc.)
+LTE is down, can be changed from the menuconfig
 
 Files
 

@@ -10,7 +10,7 @@ static bool lte_connected = false;
 
 // Initialize LTE (stub)
 esp_err_t lte_init(void) {
-    LOG_DEBUG(TAG, "LTE init (stub) - pretending initialization succeeded\n");
+    LOG_WARNING(TAG, "LTE init (stub) - pretending initialization succeeded\n");
     return ESP_OK;
 }
 
