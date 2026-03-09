@@ -5,7 +5,6 @@
 #include "esp_netif.h"
 #include "esp_netif_ip_addr.h"
 #include "esp_eap_client.h"
-#include "esp_log.h"
 #include "sdkconfig.h"
 #include "freertos/event_groups.h"
 #include "freertos/FreeRTOS.h"
@@ -144,11 +143,6 @@ esp_err_t wifi_init(void) {
 
     wifi_init_config_t init_cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&init_cfg));
-    esp_log_level_set("wifi", ESP_LOG_ERROR);
-    esp_log_level_set("esp_netif_handlers", ESP_LOG_ERROR);
-    esp_log_level_set("net80211", ESP_LOG_ERROR);
-    esp_log_level_set("pp", ESP_LOG_ERROR);
-    esp_log_level_set("phy_init", ESP_LOG_ERROR);
 
     ESP_ERROR_CHECK(esp_event_handler_register(
         WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));

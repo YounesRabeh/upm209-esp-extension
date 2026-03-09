@@ -1,0 +1,61 @@
+menu "Modbus Configuration"
+
+menuconfig MODBUS_MANAGER_ENABLE
+    bool "Modbus Manager"
+    default y
+
+if MODBUS_MANAGER_ENABLE
+
+config MODBUS_MANAGER_POLL_PERIOD_MS
+    int "Polling period (ms)"
+    default 2000
+    range 100 600000
+
+config MODBUS_MANAGER_SLAVE_ADDR
+    int "Slave address"
+    default 1
+    range 1 247
+
+config MODBUS_MANAGER_START_REG
+    int "Start register (0-based)"
+    default 0
+    range 0 65535
+
+config MODBUS_MANAGER_REG_COUNT
+    int "Registers per sample"
+    default 134
+    range 1 512
+
+config MODBUS_MANAGER_UART_PORT
+    int "UART port number"
+    default 1
+    range 0 2
+
+config MODBUS_MANAGER_UART_TX_PIN
+    int "UART TX pin"
+    default 17
+    range -1 48
+
+config MODBUS_MANAGER_UART_RX_PIN
+    int "UART RX pin"
+    default 18
+    range -1 48
+
+config MODBUS_MANAGER_UART_BAUDRATE
+    int "UART baudrate"
+    default 9600
+    range 1200 921600
+
+config MODBUS_MANAGER_TASK_STACK_SIZE
+    int "Task stack size"
+    default 4096
+    range 2048 16384
+
+config MODBUS_MANAGER_TASK_PRIORITY
+    int "Task priority"
+    default 5
+    range 1 24
+
+endif
+
+endmenu

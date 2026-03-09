@@ -1,75 +1,120 @@
 #include "modbus_master.h"
-#include "modbus_crc.h"
+
+#include <stdbool.h>
+
 #include "driver/uart.h"
-#include "esp_log.h"
-#include <string.h>
+#include "mbcontroller.h"
+#include "logging.h"
 
-#define BUF_SIZE 256
-static const char *TAG = "MODBUS";
+#define TAG "MODBUS"
+#define MODBUS_CMD_READ_HOLDING_REGISTERS 3U
+#define MODBUS_CMD_READ_INPUT_REGISTERS   4U
 
-static int s_uart = UART_NUM_1;
+static bool s_initialized = false;
+static uart_port_t s_uart = UART_NUM_1;
+static void *s_master_ctx = NULL;
+
+static const mb_parameter_descriptor_t s_min_descriptor = {
+    .cid = 0,
+    .param_key = "raw_holding",
+    .param_units = "",
+    .mb_slave_addr = 1,
+    .mb_param_type = MB_PARAM_HOLDING,
+    .mb_reg_start = 0,
+    .mb_size = 1,
+    .param_offset = 0,
+    .param_type = PARAM_TYPE_U16,
+    .param_size = sizeof(uint16_t),
+    .param_opts = {{0}},
+    .access = PAR_PERMS_READ
+};
 
 esp_err_t modbus_init(int uart_num, int tx_pin, int rx_pin, int baudrate)
 {
-    s_uart = uart_num;
+    if (s_initialized) {
+        return ESP_OK;
+    }
 
-    uart_config_t uart_config = {
-        .baud_rate = baudrate,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+    s_uart = (uart_port_t)uart_num;
+    mb_communication_info_t comm = {
+        .ser_opts.port = s_uart,
+        .ser_opts.mode = MB_RTU,
+        .ser_opts.baudrate = (uint32_t)baudrate,
+        .ser_opts.parity = MB_PARITY_NONE,
+        .ser_opts.uid = 0,
+        .ser_opts.response_tout_ms = 1000,
+        .ser_opts.data_bits = UART_DATA_8_BITS,
+        .ser_opts.stop_bits = UART_STOP_BITS_1
     };
 
-    uart_driver_install(s_uart, BUF_SIZE, 0, 0, NULL, 0);
-    uart_param_config(s_uart, &uart_config);
-    uart_set_pin(s_uart, tx_pin, rx_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    esp_err_t err = mbc_master_create_serial(&comm, &s_master_ctx);
+    if (err != ESP_OK || s_master_ctx == NULL) {
+        LOG_ERROR(TAG, "mbc_master_create_serial failed: 0x%x", err);
+        return err == ESP_OK ? ESP_ERR_INVALID_STATE : err;
+    }
 
+    err = uart_set_pin(s_uart, tx_pin, rx_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    if (err != ESP_OK) {
+        LOG_ERROR(TAG, "uart_set_pin failed: 0x%x", err);
+        mbc_master_delete(s_master_ctx);
+        s_master_ctx = NULL;
+        return err;
+    }
+
+    err = mbc_master_set_descriptor(s_master_ctx, &s_min_descriptor, 1);
+    if (err != ESP_OK) {
+        LOG_ERROR(TAG, "mbc_master_set_descriptor failed: 0x%x", err);
+        mbc_master_delete(s_master_ctx);
+        s_master_ctx = NULL;
+        return err;
+    }
+
+    err = mbc_master_start(s_master_ctx);
+    if (err != ESP_OK) {
+        LOG_ERROR(TAG, "mbc_master_start failed: 0x%x", err);
+        mbc_master_delete(s_master_ctx);
+        s_master_ctx = NULL;
+        return err;
+    }
+
+    err = uart_set_mode(s_uart, UART_MODE_RS485_HALF_DUPLEX);
+    if (err != ESP_OK) {
+        LOG_ERROR(TAG, "uart_set_mode failed: 0x%x", err);
+        mbc_master_delete(s_master_ctx);
+        s_master_ctx = NULL;
+        return err;
+    }
+
+    s_initialized = true;
     return ESP_OK;
 }
 
 static esp_err_t modbus_read_generic(
     uint8_t slave_addr,
-    uint8_t function,
+    uint8_t function_code,
     uint16_t start_reg,
     uint16_t reg_count,
     uint16_t *dest
 )
 {
-    uint8_t request[8];
-
-    request[0] = slave_addr;
-    request[1] = function;
-    request[2] = start_reg >> 8;
-    request[3] = start_reg & 0xFF;
-    request[4] = reg_count >> 8;
-    request[5] = reg_count & 0xFF;
-
-    uint16_t crc = modbus_crc16(request, 6);
-    request[6] = crc & 0xFF;
-    request[7] = crc >> 8;
-
-    uart_write_bytes(s_uart, (const char*)request, 8);
-
-    uint8_t response[BUF_SIZE];
-    int len = uart_read_bytes(s_uart, response, BUF_SIZE, pdMS_TO_TICKS(200));
-
-    if (len < 5) {
-        return ESP_FAIL;
+    if (!s_initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (s_master_ctx == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (dest == NULL || reg_count == 0) {
+        return ESP_ERR_INVALID_ARG;
     }
 
-    uint16_t resp_crc = (response[len-1] << 8) | response[len-2];
-    uint16_t calc_crc = modbus_crc16(response, len - 2);
+    mb_param_request_t req = {
+        .slave_addr = slave_addr,
+        .command = function_code,
+        .reg_start = start_reg,
+        .reg_size = reg_count
+    };
 
-    if (resp_crc != calc_crc) {
-        return ESP_ERR_INVALID_CRC;
-    }
-
-    for (int i = 0; i < reg_count; i++) {
-        dest[i] = (response[3 + i*2] << 8) | response[4 + i*2];
-    }
-
-    return ESP_OK;
+    return mbc_master_send_request(s_master_ctx, &req, dest);
 }
 
 esp_err_t modbus_read_holding_registers(
@@ -79,7 +124,13 @@ esp_err_t modbus_read_holding_registers(
     uint16_t *dest
 )
 {
-    return modbus_read_generic(slave_addr, 0x03, start_reg, reg_count, dest);
+    return modbus_read_generic(
+        slave_addr,
+        MODBUS_CMD_READ_HOLDING_REGISTERS,
+        start_reg,
+        reg_count,
+        dest
+    );
 }
 
 esp_err_t modbus_read_input_registers(
@@ -89,5 +140,11 @@ esp_err_t modbus_read_input_registers(
     uint16_t *dest
 )
 {
-    return modbus_read_generic(slave_addr, 0x04, start_reg, reg_count, dest);
+    return modbus_read_generic(
+        slave_addr,
+        MODBUS_CMD_READ_INPUT_REGISTERS,
+        start_reg,
+        reg_count,
+        dest
+    );
 }

@@ -1,10 +1,14 @@
 idf_component_register(
     SRCS 
         "modbus_master.c"
-        "modbus_crc.c"
+        "modbus_manager.c"
     INCLUDE_DIRS 
         "."
     REQUIRES 
         driver
+        storage
         utils
+        esp-modbus
 )
+
+set(COMPONENT_KCONFIG "Kconfig")
