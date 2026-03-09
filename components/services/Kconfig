@@ -1,5 +1,17 @@
 menu "Services Configuration"
 
+menuconfig STORAGE_SERVICE_ENABLE
+    bool "Storage Service"
+    default y
+    help
+      Enable storage module startup from services manager.
+
+menuconfig MODBUS_SERVICE_ENABLE
+    bool "Modbus Service"
+    default y
+    help
+      Enable modbus module startup from services manager.
+
 menuconfig TIME_SERVICE_ENABLE
     bool "Time Service"
     default y

@@ -1,4 +1,4 @@
-menu "Modbus Configuration"
+menu "Modbus-module Configuration"
 
 menuconfig MODBUS_MANAGER_ENABLE
     bool "Modbus Manager"

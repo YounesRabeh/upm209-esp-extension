@@ -15,6 +15,7 @@
 
 #if CONFIG_MODBUS_MANAGER_ENABLE
 
+// Task handle and state variables
 static TaskHandle_t s_task_handle = NULL;
 static bool s_started = false;
 

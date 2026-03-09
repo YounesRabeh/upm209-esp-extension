@@ -25,6 +25,7 @@ esp_err_t services_manager_start_post_network(void)
     LOG_INFO(TAG, "Time service disabled by config");
 #endif
 
+    #if CONFIG_STORAGE_SERVICE_ENABLE
     esp_err_t memory_err = memory_manager_start();
     if (memory_err != ESP_OK) {
         LOG_ERROR(TAG, "Failed to start Memory manager: 0x%x", memory_err);
@@ -32,8 +33,11 @@ esp_err_t services_manager_start_post_network(void)
             first_err = memory_err;
         }
     }
+    #else
+    LOG_INFO(TAG, "Storage service disabled by config");
+    #endif
 
-#if CONFIG_MODBUS_MANAGER_ENABLE
+#if CONFIG_MODBUS_SERVICE_ENABLE && CONFIG_MODBUS_MANAGER_ENABLE
     esp_err_t modbus_err = modbus_manager_start();
     if (modbus_err != ESP_OK) {
         LOG_ERROR(TAG, "Failed to start Modbus manager: 0x%x", modbus_err);
@@ -42,7 +46,7 @@ esp_err_t services_manager_start_post_network(void)
         }
     }
 #else
-    LOG_INFO(TAG, "Modbus manager disabled by config");
+    LOG_INFO(TAG, "Modbus service or manager disabled by config");
 #endif
 
     LOG_INFO(TAG, "Post-network services started");
