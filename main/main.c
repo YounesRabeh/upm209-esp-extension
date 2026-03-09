@@ -5,6 +5,7 @@
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_system.h"
+#include "esp_log.h"
 #include "logging.h"
 #include "internet.h"
 #include "services_manager.h"
@@ -13,6 +14,9 @@
 
 void app_main(void)
 {
+    // Silence ESP-IDF logs globally; keep only project LOG_* output.
+    esp_log_level_set("*", ESP_LOG_NONE);
+
     LOG_OK(TAG, "--- STARTING ---");
 
 
@@ -47,9 +51,10 @@ void app_main(void)
         LOG_ERROR(TAG, "Failed to connect to internet");
     } else {
         LOG_OK(TAG, "Internet connected successfully");
-        if (services_manager_start_post_network() != ESP_OK) {
-            LOG_ERROR(TAG, "Failed to start post-network services");
-        }
+    }
+
+    if (services_manager_start_post_network() != ESP_OK) {
+        LOG_ERROR(TAG, "Failed to start services");
     }
 
     LOG_OK(TAG, "--- MAIN TASK END ---");

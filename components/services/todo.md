@@ -16,8 +16,9 @@ Store data when required
 
 Files
 
-modbus_service.c
+services_manager.c
+time_service.c
 
-(future) acquisition_service.c
-
-(future) publish_service.c
+Periodic logic moved to:
+- components/modbus/modbus_manager.c
+- components/storage/memory_manager.c
