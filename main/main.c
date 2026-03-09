@@ -7,7 +7,6 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "logging.h"
-#include "internet.h"
 #include "services_manager.h"
 
 #define TAG "MAIN"
@@ -45,15 +44,7 @@ void app_main(void)
 
     LOG_DEBUG(TAG, "Minimum free heap size: %" PRIu32 " bytes", esp_get_minimum_free_heap_size());
 
-     ESP_ERROR_CHECK(internet_init());
-
-    if (internet_connect() != ESP_OK) {
-        LOG_ERROR(TAG, "Failed to connect to internet");
-    } else {
-        LOG_OK(TAG, "Internet connected successfully");
-    }
-
-    if (services_manager_start_post_network() != ESP_OK) {
+    if (services_manager_start() != ESP_OK) {
         LOG_ERROR(TAG, "Failed to start services");
     }
 
