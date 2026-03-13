@@ -19,6 +19,77 @@
 static TaskHandle_t s_task_handle = NULL;
 static bool s_started = false;
 
+#if CONFIG_MODBUS_MANAGER_SCAN_ON_STARTUP
+static void modbus_scan_on_startup(void)
+{
+    const int addr_start = CONFIG_MODBUS_MANAGER_SCAN_ADDR_START;
+    const int addr_end = CONFIG_MODBUS_MANAGER_SCAN_ADDR_END;
+
+    if (addr_end < addr_start) {
+        LOG_WARNING(
+            TAG,
+            "Startup scan skipped: invalid range %d..%d",
+            addr_start,
+            addr_end
+        );
+        return;
+    }
+
+    const bool configured_in_range =
+        (CONFIG_MODBUS_MANAGER_SLAVE_ADDR >= addr_start) &&
+        (CONFIG_MODBUS_MANAGER_SLAVE_ADDR <= addr_end);
+    bool configured_found = false;
+    uint16_t found_count = 0;
+
+    LOG_INFO(
+        TAG,
+        "Startup scan: probing slaves %d..%d (holding reg=%u)",
+        addr_start,
+        addr_end,
+        CONFIG_MODBUS_MANAGER_SCAN_PROBE_REG
+    );
+
+    for (int addr = addr_start; addr <= addr_end; ++addr) {
+        esp_err_t err = modbus_probe_holding_register(
+            (uint8_t)addr,
+            CONFIG_MODBUS_MANAGER_SCAN_PROBE_REG
+        );
+        if (err == ESP_OK) {
+            found_count++;
+            LOG_OK(TAG, "Detected Modbus device at slave address %d", addr);
+            if (addr == CONFIG_MODBUS_MANAGER_SLAVE_ADDR) {
+                configured_found = true;
+            }
+        }
+    }
+
+    if (found_count == 0) {
+        LOG_WARNING(
+            TAG,
+            "Startup scan complete: no devices detected in range %d..%d",
+            addr_start,
+            addr_end
+        );
+    } else {
+        LOG_OK(
+            TAG,
+            "Startup scan complete: found %u device(s) in range %d..%d",
+            found_count,
+            addr_start,
+            addr_end
+        );
+    }
+
+    if (configured_in_range && !configured_found) {
+        LOG_WARNING(
+            TAG,
+            "Configured slave %u did not respond during startup scan",
+            CONFIG_MODBUS_MANAGER_SLAVE_ADDR
+        );
+    }
+}
+#endif
+
 static void modbus_sampling_task(void *arg)
 {
     (void)arg;
@@ -95,6 +166,10 @@ esp_err_t modbus_manager_start(void)
         LOG_ERROR(TAG, "modbus_init failed: 0x%x", err);
         return err;
     }
+
+#if CONFIG_MODBUS_MANAGER_SCAN_ON_STARTUP
+    modbus_scan_on_startup();
+#endif
 
     BaseType_t ok = xTaskCreate(
         modbus_sampling_task,

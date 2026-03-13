@@ -148,3 +148,9 @@ esp_err_t modbus_read_input_registers(
         dest
     );
 }
+
+esp_err_t modbus_probe_holding_register(uint8_t slave_addr, uint16_t reg_addr)
+{
+    uint16_t probe_value = 0;
+    return modbus_read_holding_registers(slave_addr, reg_addr, 1, &probe_value);
+}
