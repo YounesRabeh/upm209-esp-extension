@@ -23,7 +23,8 @@
 #define MB_UART_TXD            7
 #define MB_UART_RXD            8
 #define MB_UART_RTS            4
-#define MB_INIT_DELAY_MS       200U
+#define MB_INIT_DELAY_MS       1000U
+#define MB_FIRST_POLL_DELAY_MS 1000U
 #define MB_CHUNK_DELAY_MS      20U
 
 #define MB_WINDOW_START_REG    0x0000U
@@ -37,6 +38,23 @@ _Static_assert(MB_MAX_READ_REGS > 0U && MB_MAX_READ_REGS <= 125U, "Invalid MB_MA
 
 static TaskHandle_t s_task_handle = NULL;
 static bool s_started = false;
+
+static void modbus_log_sample_values(const uint16_t *sample_buf)
+{
+    uint32_t checksum = 0U;
+    for (uint16_t i = 0; i < MB_WINDOW_REG_COUNT; ++i) {
+        checksum += sample_buf[i];
+    }
+
+    LOG_DEBUG(
+        TAG,
+        "Values[0..7]=[%04X %04X %04X %04X %04X %04X %04X %04X] tail=[%04X %04X] checksum=0x%08" PRIX32,
+        sample_buf[0], sample_buf[1], sample_buf[2], sample_buf[3],
+        sample_buf[4], sample_buf[5], sample_buf[6], sample_buf[7],
+        sample_buf[MB_WINDOW_REG_COUNT - 2], sample_buf[MB_WINDOW_REG_COUNT - 1],
+        checksum
+    );
+}
 
 static esp_err_t modbus_store_sample(const uint16_t *sample_buf)
 {
@@ -77,6 +95,14 @@ static esp_err_t modbus_read_window_chunked(uint16_t *sample_buf)
             return err;
         }
 
+        LOG_DEBUG(
+            TAG,
+            "Chunk read OK: slave=%u start=0x%04X count=%u",
+            (unsigned)MB_SLAVE_ADDR,
+            (unsigned)chunk_start,
+            (unsigned)chunk_count
+        );
+
         offset = (uint16_t)(offset + chunk_count);
         remaining = (uint16_t)(remaining - chunk_count);
         if (remaining > 0U && MB_CHUNK_DELAY_MS > 0U) {
@@ -93,6 +119,8 @@ static void modbus_sample_window(uint16_t *sample_buf)
     if (err != ESP_OK) {
         return;
     }
+
+    modbus_log_sample_values(sample_buf);
 
     err = modbus_store_sample(sample_buf);
     if (err != ESP_OK) {
@@ -115,6 +143,11 @@ static void modbus_sampling_task(void *arg)
 
     static uint16_t sample_buf[MB_WINDOW_REG_COUNT];
     const TickType_t period_ticks = pdMS_TO_TICKS(CONFIG_MODBUS_MANAGER_POLL_PERIOD_MS);
+
+    if (MB_FIRST_POLL_DELAY_MS > 0U) {
+        LOG_DEBUG(TAG, "First poll delay: %u ms", (unsigned)MB_FIRST_POLL_DELAY_MS);
+        vTaskDelay(pdMS_TO_TICKS(MB_FIRST_POLL_DELAY_MS));
+    }
 
     while (true) {
         modbus_sample_window(sample_buf);
@@ -143,6 +176,14 @@ esp_err_t modbus_manager_start(void)
         LOG_ERROR(TAG, "memory_init failed: 0x%x", err);
         return err;
     }
+
+    // Dev mode behavior: always start from a clean queue after reset/boot.
+    err = memory_clear();
+    if (err != ESP_OK) {
+        LOG_ERROR(TAG, "memory_clear failed: 0x%x", err);
+        return err;
+    }
+    LOG_INFO(TAG, "Memory queue cleared on startup (dev mode)");
 
     err = modbus_init(
         MB_PORT_NUM,
