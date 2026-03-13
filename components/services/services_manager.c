@@ -4,6 +4,7 @@
 #include "time_service.h"
 #include "modbus_manager.h"
 #include "memory_manager.h"
+#include "ump209.h"
 #include "logging.h"
 #include "sdkconfig.h"
 
@@ -71,6 +72,20 @@ esp_err_t services_manager_start_post_network(void)
     #endif
 
 #if CONFIG_MODBUS_SERVICE_ENABLE && CONFIG_MODBUS_MANAGER_ENABLE
+    if (!modbus_manager_is_running()) {
+        esp_err_t target_set_err = modbus_manager_set_target_register_set(ump209_get_target_register_set());
+        if (target_set_err != ESP_OK) {
+            LOG_WARNING(
+                TAG,
+                "Failed to set UMP209 target register set: 0x%x (fallback to configured window)",
+                target_set_err
+            );
+            if (first_err == ESP_OK) {
+                first_err = target_set_err;
+            }
+        }
+    }
+
     esp_err_t modbus_err = modbus_manager_start();
     if (modbus_err != ESP_OK) {
         LOG_ERROR(TAG, "Failed to start Modbus manager: 0x%x", modbus_err);

@@ -3,6 +3,4 @@ idf_component_register(
         "ump209/ump209.c"
     INCLUDE_DIRS 
         "." "ump209"
-    REQUIRES
-        modbus
 )

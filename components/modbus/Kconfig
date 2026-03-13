@@ -33,7 +33,7 @@ config MODBUS_MANAGER_SCAN_ADDR_END
     range 1 247
 
 config MODBUS_MANAGER_SCAN_PROBE_REG
-    int "Startup scan probe register (holding)"
+    int "Startup scan probe register"
     default 0
     range 0 65535
 
@@ -56,18 +56,28 @@ config MODBUS_MANAGER_UART_PORT
 
 config MODBUS_MANAGER_UART_TX_PIN
     int "UART TX pin"
-    default 17
+    default 7
     range -1 48
 
 config MODBUS_MANAGER_UART_RX_PIN
     int "UART RX pin"
-    default 18
+    default 8
+    range -1 48
+
+config MODBUS_MANAGER_UART_RTS_PIN
+    int "UART RTS pin (RS485 direction)"
+    default 4
     range -1 48
 
 config MODBUS_MANAGER_UART_BAUDRATE
     int "UART baudrate"
-    default 9600
+    default 19200
     range 1200 921600
+
+config MODBUS_MANAGER_DELAY_BETWEEN_REQUESTS_MS
+    int "Delay between Modbus requests (ms)"
+    default 50
+    range 0 1000
 
 config MODBUS_MANAGER_TASK_STACK_SIZE
     int "Task stack size"
