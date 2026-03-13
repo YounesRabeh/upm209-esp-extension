@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 
-#include "driver/uart.h"
 #include "mbcontroller.h"
 #include "logging.h"
 
@@ -13,6 +12,7 @@
 static bool s_initialized = false;
 static uart_port_t s_uart = UART_NUM_1;
 static void *s_master_ctx = NULL;
+static modbus_io_config_t s_io_cfg = {0};
 
 static const mb_parameter_descriptor_t s_min_descriptor = {
     .cid = 0,
@@ -29,33 +29,47 @@ static const mb_parameter_descriptor_t s_min_descriptor = {
     .access = PAR_PERMS_READ
 };
 
-esp_err_t modbus_init(int uart_num, int tx_pin, int rx_pin, int baudrate)
+esp_err_t modbus_init(
+    int uart_num,
+    int tx_pin,
+    int rx_pin,
+    int rts_pin,
+    int baudrate,
+    modbus_io_link_t link_type
+)
 {
     if (s_initialized) {
         return ESP_OK;
     }
 
     s_uart = (uart_port_t)uart_num;
-    mb_communication_info_t comm = {
-        .ser_opts.port = s_uart,
-        .ser_opts.mode = MB_RTU,
-        .ser_opts.baudrate = (uint32_t)baudrate,
-        .ser_opts.parity = MB_PARITY_NONE,
-        .ser_opts.uid = 0,
-        .ser_opts.response_tout_ms = 1000,
-        .ser_opts.data_bits = UART_DATA_8_BITS,
-        .ser_opts.stop_bits = UART_STOP_BITS_1
+    s_io_cfg = (modbus_io_config_t){
+        .uart_port = s_uart,
+        .tx_pin = tx_pin,
+        .rx_pin = rx_pin,
+        .rts_pin = rts_pin,
+        .baudrate = (uint32_t)baudrate,
+        .data_bits = UART_DATA_8_BITS,
+        .stop_bits = UART_STOP_BITS_1,
+        .parity = UART_PARITY_DISABLE,
+        .link_type = link_type
     };
+    mb_communication_info_t comm = {0};
+    esp_err_t err = modbus_io_fill_comm_info(&s_io_cfg, &comm);
+    if (err != ESP_OK) {
+        LOG_ERROR(TAG, "modbus_io_fill_comm_info failed: 0x%x", err);
+        return err;
+    }
 
-    esp_err_t err = mbc_master_create_serial(&comm, &s_master_ctx);
+    err = mbc_master_create_serial(&comm, &s_master_ctx);
     if (err != ESP_OK || s_master_ctx == NULL) {
         LOG_ERROR(TAG, "mbc_master_create_serial failed: 0x%x", err);
         return err == ESP_OK ? ESP_ERR_INVALID_STATE : err;
     }
 
-    err = uart_set_pin(s_uart, tx_pin, rx_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    err = modbus_io_apply_pins(&s_io_cfg);
     if (err != ESP_OK) {
-        LOG_ERROR(TAG, "uart_set_pin failed: 0x%x", err);
+        LOG_ERROR(TAG, "modbus_io_apply_pins failed: 0x%x", err);
         mbc_master_delete(s_master_ctx);
         s_master_ctx = NULL;
         return err;
@@ -77,9 +91,9 @@ esp_err_t modbus_init(int uart_num, int tx_pin, int rx_pin, int baudrate)
         return err;
     }
 
-    err = uart_set_mode(s_uart, UART_MODE_RS485_HALF_DUPLEX);
+    err = modbus_io_apply_link_mode(&s_io_cfg);
     if (err != ESP_OK) {
-        LOG_ERROR(TAG, "uart_set_mode failed: 0x%x", err);
+        LOG_ERROR(TAG, "modbus_io_apply_link_mode failed: 0x%x", err);
         mbc_master_delete(s_master_ctx);
         s_master_ctx = NULL;
         return err;
@@ -153,4 +167,10 @@ esp_err_t modbus_probe_holding_register(uint8_t slave_addr, uint16_t reg_addr)
 {
     uint16_t probe_value = 0;
     return modbus_read_holding_registers(slave_addr, reg_addr, 1, &probe_value);
+}
+
+esp_err_t modbus_probe_input_register(uint8_t slave_addr, uint16_t reg_addr)
+{
+    uint16_t probe_value = 0;
+    return modbus_read_input_registers(slave_addr, reg_addr, 1, &probe_value);
 }
