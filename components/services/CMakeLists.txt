@@ -5,7 +5,6 @@ idf_component_register(
     INCLUDE_DIRS 
         "."
     REQUIRES
-        devices 
         network
         modbus
         storage

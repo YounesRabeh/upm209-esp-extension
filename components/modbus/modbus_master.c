@@ -35,6 +35,7 @@ esp_err_t modbus_init(
     int rx_pin,
     int rts_pin,
     int baudrate,
+    uart_parity_t parity,
     modbus_io_link_t link_type
 )
 {
@@ -51,7 +52,7 @@ esp_err_t modbus_init(
         .baudrate = (uint32_t)baudrate,
         .data_bits = UART_DATA_8_BITS,
         .stop_bits = UART_STOP_BITS_1,
-        .parity = UART_PARITY_DISABLE,
+        .parity = parity,
         .link_type = link_type
     };
     mb_communication_info_t comm = {0};

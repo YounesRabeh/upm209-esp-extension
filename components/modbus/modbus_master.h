@@ -14,6 +14,7 @@ esp_err_t modbus_init(
     int rx_pin,
     int rts_pin,
     int baudrate,
+    uart_parity_t parity,
     modbus_io_link_t link_type
 );
 
