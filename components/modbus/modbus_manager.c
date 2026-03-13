@@ -8,6 +8,7 @@
 #include "freertos/task.h"
 #include "logging.h"
 #include "memory.h"
+#include "memory_manager.h"
 #include "modbus_master.h"
 #include "modbus_io.h"
 #include "sdkconfig.h"
@@ -25,19 +26,33 @@
 #define MB_UART_RTS            4
 #define MB_INIT_DELAY_MS       1000U
 #define MB_FIRST_POLL_DELAY_MS 1000U
-#define MB_CHUNK_DELAY_MS      20U
+#define MB_CHUNK_DELAY_MS      30U
+#define MB_CHUNK_RETRIES       2U
+#define MB_RETRY_DELAY_MS      200U
 
 #define MB_WINDOW_START_REG    0x0000U
 // UPM209 input map is contiguous from 0x0000 to 0x0075 (118 registers).
 // Reading beyond this range in one contiguous request can hit invalid addresses.
 #define MB_WINDOW_REG_COUNT    118U
-#define MB_MAX_READ_REGS       125U
+#define MB_MAX_READ_REGS       60U
 #define MB_PROBE_REG           MB_WINDOW_START_REG
 
 _Static_assert(MB_MAX_READ_REGS > 0U && MB_MAX_READ_REGS <= 125U, "Invalid MB_MAX_READ_REGS");
 
 static TaskHandle_t s_task_handle = NULL;
 static bool s_started = false;
+
+static const char *modbus_err_label(esp_err_t err)
+{
+    switch (err) {
+        case ESP_ERR_TIMEOUT:
+            return "timeout";
+        case ESP_ERR_INVALID_RESPONSE:
+            return "invalid_response";
+        default:
+            return "other";
+    }
+}
 
 static void modbus_log_sample_values(const uint16_t *sample_buf)
 {
@@ -59,7 +74,7 @@ static void modbus_log_sample_values(const uint16_t *sample_buf)
 static esp_err_t modbus_store_sample(const uint16_t *sample_buf)
 {
     uint32_t ts = (uint32_t)time(NULL);
-    return memory_enqueue_modbus_sample(
+    return memory_manager_enqueue_modbus_sample(
         MB_SLAVE_ADDR,
         MB_WINDOW_START_REG,
         sample_buf,
@@ -76,22 +91,43 @@ static esp_err_t modbus_read_window_chunked(uint16_t *sample_buf)
     while (remaining > 0U) {
         uint16_t chunk_count = (remaining > MB_MAX_READ_REGS) ? MB_MAX_READ_REGS : remaining;
         uint16_t chunk_start = (uint16_t)(MB_WINDOW_START_REG + offset);
+        esp_err_t err = ESP_FAIL;
 
-        esp_err_t err = modbus_read_input_registers(
-            MB_SLAVE_ADDR,
-            chunk_start,
-            chunk_count,
-            &sample_buf[offset]
-        );
-        if (err != ESP_OK) {
+        for (uint8_t attempt = 0U; attempt <= MB_CHUNK_RETRIES; ++attempt) {
+            err = modbus_read_input_registers(
+                MB_SLAVE_ADDR,
+                chunk_start,
+                chunk_count,
+                &sample_buf[offset]
+            );
+            if (err == ESP_OK) {
+                break;
+            }
+
             LOG_WARNING(
                 TAG,
-                "Modbus read failed: slave=%u fc=0x04 start=0x%04X count=%u err=0x%x",
+                "Modbus read failed: slave=%u fc=0x04 start=0x%04X count=%u err=0x%x (%s) attempt=%u/%u",
                 (unsigned)MB_SLAVE_ADDR,
                 (unsigned)chunk_start,
                 (unsigned)chunk_count,
-                err
+                err,
+                modbus_err_label(err),
+                (unsigned)(attempt + 1U),
+                (unsigned)(MB_CHUNK_RETRIES + 1U)
             );
+
+            if (attempt < MB_CHUNK_RETRIES) {
+                esp_err_t recover_err = modbus_recover_link();
+                if (recover_err != ESP_OK) {
+                    LOG_WARNING(TAG, "Modbus link recovery failed: err=0x%x", recover_err);
+                }
+                if (MB_RETRY_DELAY_MS > 0U) {
+                    vTaskDelay(pdMS_TO_TICKS(MB_RETRY_DELAY_MS));
+                }
+            }
+        }
+
+        if (err != ESP_OK) {
             return err;
         }
 
@@ -128,9 +164,10 @@ static void modbus_sample_window(uint16_t *sample_buf)
     } else {
         LOG_DEBUG(
             TAG,
-            "Sample stored: start=0x%04X count=%u pending=%" PRIu32 " used=%" PRIu32 "B",
+            "Sample stored: start=0x%04X count=%u ingest_pending=%" PRIu32 " persisted_pending=%" PRIu32 " used=%" PRIu32 "B",
             (unsigned)MB_WINDOW_START_REG,
             (unsigned)MB_WINDOW_REG_COUNT,
+            memory_manager_ingest_pending(),
             memory_pending_samples(),
             memory_used_bytes()
         );
@@ -171,19 +208,12 @@ esp_err_t modbus_manager_start(void)
         return ESP_ERR_INVALID_SIZE;
     }
 
-    esp_err_t err = memory_init();
-    if (err != ESP_OK) {
-        LOG_ERROR(TAG, "memory_init failed: 0x%x", err);
-        return err;
+    if (!memory_is_ready()) {
+        LOG_ERROR(TAG, "memory module is not ready");
+        return ESP_ERR_INVALID_STATE;
     }
 
-    // Dev mode behavior: always start from a clean queue after reset/boot.
-    err = memory_clear();
-    if (err != ESP_OK) {
-        LOG_ERROR(TAG, "memory_clear failed: 0x%x", err);
-        return err;
-    }
-    LOG_INFO(TAG, "Memory queue cleared on startup (dev mode)");
+    esp_err_t err = ESP_OK;
 
     err = modbus_init(
         MB_PORT_NUM,

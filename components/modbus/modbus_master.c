@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 
+#include "driver/uart.h"
 #include "mbcontroller.h"
 #include "logging.h"
 
@@ -174,4 +175,13 @@ esp_err_t modbus_probe_input_register(uint8_t slave_addr, uint16_t reg_addr)
 {
     uint16_t probe_value = 0;
     return modbus_read_input_registers(slave_addr, reg_addr, 1, &probe_value);
+}
+
+esp_err_t modbus_recover_link(void)
+{
+    if (!s_initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    return uart_flush_input(s_uart);
 }
