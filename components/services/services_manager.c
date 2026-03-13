@@ -3,7 +3,6 @@
 #include "internet.h"
 #include "time_service.h"
 #include "modbus_manager.h"
-#include "memory_manager.h"
 #include "logging.h"
 #include "sdkconfig.h"
 
@@ -59,13 +58,7 @@ esp_err_t services_manager_start_post_network(void)
 #endif
 
     #if CONFIG_STORAGE_SERVICE_ENABLE
-    esp_err_t memory_err = memory_manager_start();
-    if (memory_err != ESP_OK) {
-        LOG_ERROR(TAG, "Failed to start Memory manager: 0x%x", memory_err);
-        if (first_err == ESP_OK) {
-            first_err = memory_err;
-        }
-    }
+    LOG_INFO(TAG, "Storage manager skipped (discovery mode)");
     #else
     LOG_INFO(TAG, "Storage service disabled by config");
     #endif
