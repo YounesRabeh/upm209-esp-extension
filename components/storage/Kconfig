@@ -33,6 +33,21 @@ menuconfig MEMORY_MANAGER_ENABLE
 
 if MEMORY_MANAGER_ENABLE
 
+config MEMORY_MANAGER_INGEST_QUEUE_LEN
+    int "Ingest queue length (samples)"
+    default 64
+    range 4 512
+
+config MEMORY_MANAGER_WRITER_TASK_STACK_SIZE
+    int "Memory writer task stack size"
+    default 4096
+    range 2048 16384
+
+config MEMORY_MANAGER_WRITER_TASK_PRIORITY
+    int "Memory writer task priority"
+    default 5
+    range 1 24
+
 config MEMORY_MANAGER_PERIOD_MS
     int "Memory monitor period (ms)"
     default 5000

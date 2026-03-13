@@ -67,3 +67,10 @@ esp_err_t modbus_probe_holding_register(uint8_t slave_addr, uint16_t reg_addr);
  * @returns ESP_OK if the slave responds successfully, otherwise an error code.
  */
 esp_err_t modbus_probe_input_register(uint8_t slave_addr, uint16_t reg_addr);
+
+/**
+ * @brief Recover Modbus UART link after framing/timeouts.
+ * Flushes pending RX bytes so next request starts from a clean state.
+ * @returns ESP_OK on success or an error code on failure.
+ */
+esp_err_t modbus_recover_link(void);
