@@ -16,6 +16,29 @@ config MODBUS_MANAGER_SLAVE_ADDR
     default 1
     range 1 247
 
+config MODBUS_MANAGER_SCAN_ON_STARTUP
+    bool "Scan for connected devices at startup"
+    default y
+
+if MODBUS_MANAGER_SCAN_ON_STARTUP
+
+config MODBUS_MANAGER_SCAN_ADDR_START
+    int "Startup scan address start"
+    default 1
+    range 1 247
+
+config MODBUS_MANAGER_SCAN_ADDR_END
+    int "Startup scan address end"
+    default 10
+    range 1 247
+
+config MODBUS_MANAGER_SCAN_PROBE_REG
+    int "Startup scan probe register (holding)"
+    default 0
+    range 0 65535
+
+endif
+
 config MODBUS_MANAGER_START_REG
     int "Start register (0-based)"
     default 0

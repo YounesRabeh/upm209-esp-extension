@@ -42,3 +42,11 @@ esp_err_t modbus_read_input_registers(
     uint16_t reg_count,
     uint16_t *dest
 );
+
+/**
+ * @brief Probe a slave by attempting to read a single holding register.
+ * @param slave_addr Modbus slave address to probe
+ * @param reg_addr Register address used for the probe read
+ * @returns ESP_OK if the slave responds successfully, otherwise an error code.
+ */
+esp_err_t modbus_probe_holding_register(uint8_t slave_addr, uint16_t reg_addr);
