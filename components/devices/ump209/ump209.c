@@ -1,172 +1,328 @@
 #include "ump209.h"
 
+#define WORDS_2 2U
+#define WORDS_4 4U
+
+#define SCALE_MILLI 0.001f
+#define SCALE_DECI 0.1f
+#define SCALE_CENTI_PERCENT 0.01f
+#define SCALE_ONE 1.0f
+
+#define REG(name, unit, addr, words, scale) \
+    { name, unit, addr, words, TARGET_REGISTER_FUNC_READ_INPUT, scale }
+
+#define HARMONIC16(prefix, base) \
+    REG(prefix " component 0 (DC)", "%", (base) + 0x00, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 1st",    "%", (base) + 0x02, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 2nd",    "%", (base) + 0x04, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 3rd",    "%", (base) + 0x06, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 4th",    "%", (base) + 0x08, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 5th",    "%", (base) + 0x0A, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 6th",    "%", (base) + 0x0C, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 7th",    "%", (base) + 0x0E, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 8th",    "%", (base) + 0x10, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 9th",    "%", (base) + 0x12, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 10th",   "%", (base) + 0x14, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 11th",   "%", (base) + 0x16, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 12th",   "%", (base) + 0x18, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 13th",   "%", (base) + 0x1A, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 14th",   "%", (base) + 0x1C, WORDS_2, SCALE_CENTI_PERCENT), \
+    REG(prefix " component 15th",   "%", (base) + 0x1E, WORDS_2, SCALE_CENTI_PERCENT)
+
 /**
- * @brief Array of all basic registers of the UMP209 multimeter.
+ * @brief Register map extracted from UPM209 sheet (INTEGER column).
  */
 static const MultimeterRegister s_target_registers[] = {
-    // Instant values
-    { "Phase 1-N Voltage",      "V",    0x0000, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 0
-    { "Phase 2-N Voltage",      "V",    0x0002, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 1
-    { "Phase 3-N Voltage",      "V",    0x0004, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 2
-    { "Phase 1-2 Voltage",      "V",    0x0006, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 3
-    { "Phase 2-3 Voltage",      "V",    0x0008, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 4
-    { "Phase 3-1 Voltage",      "V",    0x000A, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 5
-    { "System Voltage",         "V",    0x000C, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 6
+    // ===== CHUNK 1: 0x0000 .. 0x0087 =====
+    // REAL TIME VALUES
+    REG("Phase 1-N Voltage", "V", 0x0000, WORDS_2, SCALE_MILLI),
+    REG("Phase 2-N Voltage", "V", 0x0002, WORDS_2, SCALE_MILLI),
+    REG("Phase 3-N Voltage", "V", 0x0004, WORDS_2, SCALE_MILLI),
+    REG("Line 12 Voltage", "V", 0x0006, WORDS_2, SCALE_MILLI),
+    REG("Line 23 Voltage", "V", 0x0008, WORDS_2, SCALE_MILLI),
+    REG("Line 31 Voltage", "V", 0x000A, WORDS_2, SCALE_MILLI),
+    REG("System Voltage", "V", 0x000C, WORDS_2, SCALE_MILLI),
 
-    { "Phase 1 Current",        "A",    0x000E, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 7
-    { "Phase 2 Current",        "A",    0x0010, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 8
-    { "Phase 3 Current",        "A",    0x0012, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 9
-    { "Neutral Current",        "A",    0x0014, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 10
-    { "System Current",         "A",    0x0016, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 11
+    REG("Phase 1 Current", "A", 0x000E, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 Current", "A", 0x0010, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 Current", "A", 0x0012, WORDS_2, SCALE_MILLI),
+    REG("Neutral Current", "A", 0x0014, WORDS_2, SCALE_MILLI),
+    REG("System Current", "A", 0x0016, WORDS_2, SCALE_MILLI),
 
-    { "Phase 1 Active Power",   "W",    0x0018, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 12
-    { "Phase 2 Active Power",   "W",    0x001C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 13
-    { "Phase 3 Active Power",   "W",    0x0020, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 14
-    { "System Active Power",    "W",    0x0024, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 15
+    REG("Phase 1 Active Power", "W", 0x0018, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 Active Power", "W", 0x001C, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 Active Power", "W", 0x0020, WORDS_4, SCALE_MILLI),
+    REG("System Active Power", "W", 0x0024, WORDS_4, SCALE_MILLI),
 
-    { "Phase 1 Apparent Power", "VA",   0x0028, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 16
-    { "Phase 2 Apparent Power", "VA",   0x002C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 17
-    { "Phase 3 Apparent Power", "VA",   0x0030, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 18
-    { "System Apparent Power",  "VA",   0x0034, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 19
+    REG("Phase 1 Apparent Power", "VA", 0x0028, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 Apparent Power", "VA", 0x002C, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 Apparent Power", "VA", 0x0030, WORDS_4, SCALE_MILLI),
+    REG("System Apparent Power", "VA", 0x0034, WORDS_4, SCALE_MILLI),
 
-    { "Phase 1 Reactive Power", "var",  0x0038, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 20
-    { "Phase 2 Reactive Power", "var",  0x003C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 21
-    { "Phase 3 Reactive Power", "var",  0x0040, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 22
-    { "System Reactive Power",  "var",  0x0044, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 23
+    REG("Phase 1 Reactive Power", "var", 0x0038, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 Reactive Power", "var", 0x003C, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 Reactive Power", "var", 0x0040, WORDS_4, SCALE_MILLI),
+    REG("System Reactive Power", "var", 0x0044, WORDS_4, SCALE_MILLI),
 
-    { "Phase 1 Power Factor",   "-",    0x0048, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 24
-    { "Phase 2 Power Factor",   "-",    0x004A, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 25
-    { "Phase 3 Power Factor",   "-",    0x004C, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 26
-    { "System Power Factor",    "-",    0x004E, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 27
+    REG("Phase 1 Power Factor", "-", 0x0048, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 Power Factor", "-", 0x004A, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 Power Factor", "-", 0x004C, WORDS_2, SCALE_MILLI),
+    REG("System Power Factor", "-", 0x004E, WORDS_2, SCALE_MILLI),
 
-    { "Phase 1 DPF",            "-",    0x0050, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 28
-    { "Phase 2 DPF",            "-",    0x0052, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 29
-    { "Phase 3 DPF",            "-",    0x0054, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 30
+    REG("Phase 1 DPF", "-", 0x0050, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 DPF", "-", 0x0052, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 DPF", "-", 0x0054, WORDS_2, SCALE_MILLI),
 
-    { "Phase 1 TAN(phi)",       "-",    0x0056, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 31
-    { "Phase 2 TAN(phi)",       "-",    0x0058, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 32
-    { "Phase 3 TAN(phi)",       "-",    0x005A, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 33
-    { "System TAN(phi)",        "-",    0x005C, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 34
+    REG("Phase 1 TAN(phi)", "-", 0x0056, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 TAN(phi)", "-", 0x0058, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 TAN(phi)", "-", 0x005A, WORDS_2, SCALE_MILLI),
+    REG("System TAN(phi)", "-", 0x005C, WORDS_2, SCALE_MILLI),
 
-    { "Phase 1 Voltage THD",    "%",    0x005E, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 35
-    { "Phase 2 Voltage THD",    "%",    0x0060, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 36
-    { "Phase 3 Voltage THD",    "%",    0x0062, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 37
-    { "Line 12 Voltage THD",    "%",    0x0064, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 38
-    { "Line 23 Voltage THD",    "%",    0x0066, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 39
-    { "Line 31 Voltage THD",    "%",    0x0068, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 40
+    REG("Phase 1 Voltage THD", "%", 0x005E, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 Voltage THD", "%", 0x0060, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 Voltage THD", "%", 0x0062, WORDS_2, SCALE_MILLI),
+    REG("Line 12 Voltage THD", "%", 0x0064, WORDS_2, SCALE_MILLI),
+    REG("Line 23 Voltage THD", "%", 0x0066, WORDS_2, SCALE_MILLI),
+    REG("Line 31 Voltage THD", "%", 0x0068, WORDS_2, SCALE_MILLI),
 
-    { "Phase 1 Current THD",    "%",    0x006A, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 41
-    { "Phase 2 Current THD",    "%",    0x006C, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 42
-    { "Phase 3 Current THD",    "%",    0x006E, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 43
-    { "Neutral Current THD",    "%",    0x0070, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 44
+    REG("Phase 1 Current THD", "%", 0x006A, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 Current THD", "%", 0x006C, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 Current THD", "%", 0x006E, WORDS_2, SCALE_MILLI),
+    REG("Neutral Current THD", "%", 0x0070, WORDS_2, SCALE_MILLI),
 
-    { "Frequency",              "Hz",   0x0072, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 45
-    { "Phase Sequence",         "-",    0x0074, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 46
+    REG("Frequency", "Hz", 0x0072, WORDS_2, SCALE_MILLI),
+    REG("Phase Sequence", "-", 0x0074, WORDS_2, SCALE_ONE),
+    REG("Installation Hourcounter", "h", 0x0076, WORDS_2, SCALE_DECI),
+    REG("Measurement Hourcounter", "h", 0x0078, WORDS_2, SCALE_DECI),
 
-    // Demand values
-    { "Phase 1 current DMD",                 "A",   0x010E, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 47
-    { "Phase 2 current DMD",                 "A",   0x0110, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 48
-    { "Phase 3 current DMD",                 "A",   0x0112, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 49
-    { "Neutral current DMD",                 "A",   0x0114, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 50
-    { "System current DMD",                  "A",   0x0116, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 51
-    { "Phase 1 imported active power DMD",   "W",   0x0118, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 52
-    { "Phase 1 exported active power DMD",   "W",   0x011C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 53
-    { "Phase 2 imported active power DMD",   "W",   0x0120, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 54
-    { "Phase 2 exported active power DMD",   "W",   0x0124, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 55
-    { "Phase 3 imported active power DMD",   "W",   0x0128, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 56
-    { "Phase 3 exported active power DMD",   "W",   0x012C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 57
-    { "System imported active power DMD",    "W",   0x0130, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 58
-    { "System exported active power DMD",    "W",   0x0134, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 59
+    // ===== CHUNK 2: 0x010E .. 0x0193 =====
+    // DMD VALUES
+    REG("Phase 1 current DMD", "A", 0x010E, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 current DMD", "A", 0x0110, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 current DMD", "A", 0x0112, WORDS_2, SCALE_MILLI),
+    REG("Neutral current DMD", "A", 0x0114, WORDS_2, SCALE_MILLI),
+    REG("System current DMD", "A", 0x0116, WORDS_2, SCALE_MILLI),
 
-    { "Phase 1 imported reactive power DMD", "var", 0x0160, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 60
-    { "Phase 1 exported reactive power DMD", "var", 0x0164, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 61
-    { "Phase 2 imported reactive power DMD", "var", 0x0168, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 62
-    { "Phase 2 exported reactive power DMD", "var", 0x016C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 63
-    { "Phase 3 imported reactive power DMD", "var", 0x0170, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 64
-    { "Phase 3 exported reactive power DMD", "var", 0x0174, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 65
-    { "System imported reactive power DMD",  "var", 0x0178, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 66
-    { "System exported reactive power DMD",  "var", 0x017C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 67
+    REG("Phase 1 imported active power DMD", "W", 0x0118, WORDS_4, SCALE_MILLI),
+    REG("Phase 1 exported active power DMD", "W", 0x011C, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 imported active power DMD", "W", 0x0120, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 exported active power DMD", "W", 0x0124, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 imported active power DMD", "W", 0x0128, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 exported active power DMD", "W", 0x012C, WORDS_4, SCALE_MILLI),
+    REG("System imported active power DMD", "W", 0x0130, WORDS_4, SCALE_MILLI),
+    REG("System exported active power DMD", "W", 0x0134, WORDS_4, SCALE_MILLI),
+    REG("Balance of system active power DMD", "W", 0x0138, WORDS_4, SCALE_MILLI),
 
-    // MAX values
-    { "Phase 1-N voltage MAX",               "V",   0x0200, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 68
-    { "Phase 2-N voltage MAX",               "V",   0x0202, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 69
-    { "Phase 3-N voltage MAX",               "V",   0x0204, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 70
-    { "Line 12 voltage MAX",                 "V",   0x0206, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 71
-    { "Line 23 voltage MAX",                 "V",   0x0208, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 72
-    { "Line 31 voltage MAX",                 "V",   0x020A, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 73
-    { "System voltage MAX",                  "V",   0x020C, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 74
-    { "Phase 1 current MAX",                 "A",   0x020E, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 75
-    { "Phase 2 current MAX",                 "A",   0x0210, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 76
-    { "Phase 3 current MAX",                 "A",   0x0212, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 77
-    { "Neutral current MAX",                 "A",   0x0214, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 78
-    { "System current MAX",                  "A",   0x0216, 2, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 79
+    REG("Phase 1 imported apparent power DMD", "VA", 0x013C, WORDS_4, SCALE_MILLI),
+    REG("Phase 1 exported apparent power DMD", "VA", 0x0140, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 imported apparent power DMD", "VA", 0x0144, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 exported apparent power DMD", "VA", 0x0148, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 imported apparent power DMD", "VA", 0x014C, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 exported apparent power DMD", "VA", 0x0150, WORDS_4, SCALE_MILLI),
+    REG("System imported apparent power DMD", "VA", 0x0154, WORDS_4, SCALE_MILLI),
+    REG("System exported apparent power DMD", "VA", 0x0158, WORDS_4, SCALE_MILLI),
+    REG("Balance of system apparent power DMD", "VA", 0x015C, WORDS_4, SCALE_MILLI),
 
-    { "Phase 1 imported active power DMD MAX",   "W",   0x02B4, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 80
-    { "Phase 1 exported active power DMD MAX",   "W",   0x02B8, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 81
-    { "Phase 2 imported active power DMD MAX",   "W",   0x02BC, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 82
-    { "Phase 2 exported active power DMD MAX",   "W",   0x02C0, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 83
-    { "Phase 3 imported active power DMD MAX",   "W",   0x02C4, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 84
-    { "Phase 3 exported active power DMD MAX",   "W",   0x02C8, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 85
-    { "System imported active power DMD MAX",    "W",   0x02CC, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 86
-    { "System exported active power DMD MAX",    "W",   0x02D0, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 87
+    REG("Phase 1 imported reactive power DMD", "var", 0x0160, WORDS_4, SCALE_MILLI),
+    REG("Phase 1 exported reactive power DMD", "var", 0x0164, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 imported reactive power DMD", "var", 0x0168, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 exported reactive power DMD", "var", 0x016C, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 imported reactive power DMD", "var", 0x0170, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 exported reactive power DMD", "var", 0x0174, WORDS_4, SCALE_MILLI),
+    REG("System imported reactive power DMD", "var", 0x0178, WORDS_4, SCALE_MILLI),
+    REG("System exported reactive power DMD", "var", 0x017C, WORDS_4, SCALE_MILLI),
+    REG("Balance of system reactive power DMD", "var", 0x0180, WORDS_4, SCALE_MILLI),
 
-    { "Phase 1 imported reactive power DMD MAX", "var", 0x02F4, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 88
-    { "Phase 1 exported reactive power DMD MAX", "var", 0x02F8, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 89
-    { "Phase 2 imported reactive power DMD MAX", "var", 0x02FC, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 90
-    { "Phase 2 exported reactive power DMD MAX", "var", 0x0300, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 91
-    { "Phase 3 imported reactive power DMD MAX", "var", 0x0304, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 92
-    { "Phase 3 exported reactive power DMD MAX", "var", 0x0308, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 93
-    { "System imported reactive power DMD MAX",  "var", 0x030C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 94
-    { "System exported reactive power DMD MAX",  "var", 0x0310, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 95
+    REG("Phase 1 inductive power factor DMD", "-", 0x0184, WORDS_2, SCALE_MILLI),
+    REG("Phase 1 capacitive power factor DMD", "-", 0x0186, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 inductive power factor DMD", "-", 0x0188, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 capacitive power factor DMD", "-", 0x018A, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 inductive power factor DMD", "-", 0x018C, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 capacitive power factor DMD", "-", 0x018E, WORDS_2, SCALE_MILLI),
+    REG("System inductive power factor DMD", "-", 0x0190, WORDS_2, SCALE_MILLI),
+    REG("System capacitive power factor DMD", "-", 0x0192, WORDS_2, SCALE_MILLI),
 
-    // MIN values
-    { "System Active power MIN",   "W",   0x02D4, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 96
-    { "System Apparent power MIN", "VA",  0x02D8, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 97
-    { "System Reactive power MIN", "var", 0x02DC, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 98
+    // ===== CHUNK 3: 0x0200 .. 0x031F =====
+    // MAX VALUES
+    REG("Phase 1-N voltage MAX", "V", 0x0200, WORDS_2, SCALE_MILLI),
+    REG("Phase 2-N voltage MAX", "V", 0x0202, WORDS_2, SCALE_MILLI),
+    REG("Phase 3-N voltage MAX", "V", 0x0204, WORDS_2, SCALE_MILLI),
+    REG("Line 12 voltage MAX", "V", 0x0206, WORDS_2, SCALE_MILLI),
+    REG("Line 23 voltage MAX", "V", 0x0208, WORDS_2, SCALE_MILLI),
+    REG("Line 31 voltage MAX", "V", 0x020A, WORDS_2, SCALE_MILLI),
+    REG("System voltage MAX", "V", 0x020C, WORDS_2, SCALE_MILLI),
+    REG("Phase 1 current MAX", "A", 0x020E, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 current MAX", "A", 0x0210, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 current MAX", "A", 0x0212, WORDS_2, SCALE_MILLI),
+    REG("Neutral current MAX", "A", 0x0214, WORDS_2, SCALE_MILLI),
+    REG("System current MAX", "A", 0x0216, WORDS_2, SCALE_MILLI),
 
-    // Energy values
-    { "Phase 1 imported active energy",            "Wh",   0x0400, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 99
-    { "Phase 1 exported active energy",            "Wh",   0x0404, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 100
-    { "Phase 2 imported active energy",            "Wh",   0x0408, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 101
-    { "Phase 2 exported active energy",            "Wh",   0x040C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 102
-    { "Phase 3 imported active energy",            "Wh",   0x0410, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 103
-    { "Phase 3 exported active energy",            "Wh",   0x0414, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 104
-    { "System imported active energy",             "Wh",   0x0418, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 105
-    { "System exported active energy",             "Wh",   0x041C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 106
-    { "Phase 1 imported active energy",            "Wh",   0x0400, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 107
-    { "Phase 1 exported active energy",            "Wh",   0x0404, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 108
-    { "Phase 2 imported active energy",            "Wh",   0x0408, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 109
-    { "Phase 2 exported active energy",            "Wh",   0x040C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 110
-    { "Phase 3 imported active energy",            "Wh",   0x0410, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 111
-    { "Phase 3 exported active energy",            "Wh",   0x0414, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 112
-    { "System imported active energy",             "Wh",   0x0418, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 113
-    { "System exported active energy",             "Wh",   0x041C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 114
-    { "Balance of system active energy (imp-exp)", "Wh",   0x0420, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 115
+    REG("Phase 1 imported active power MAX", "W", 0x0218, WORDS_4, SCALE_MILLI),
+    REG("Phase 1 exported active power MAX", "W", 0x021C, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 imported active power MAX", "W", 0x0220, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 exported active power MAX", "W", 0x0224, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 imported active power MAX", "W", 0x0228, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 exported active power MAX", "W", 0x022C, WORDS_4, SCALE_MILLI),
+    REG("System imported active power MAX", "W", 0x0230, WORDS_4, SCALE_MILLI),
+    REG("System exported active power MAX", "W", 0x0234, WORDS_4, SCALE_MILLI),
 
-    { "Balance of system apparent energy (BAL-C + BAL-L)", "VAh",  0x048C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 116
-    { "Phase 1 imported capacitive reactive energy",       "varh", 0x0490, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 117
-    { "Phase 1 exported capacitive reactive energy",       "varh", 0x0494, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 118
-    { "Phase 1 imported inductive reactive energy",        "varh", 0x0498, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 119
-    { "Phase 1 exported inductive reactive energy",        "varh", 0x049C, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 120
-    { "Phase 2 imported capacitive reactive energy",       "varh", 0x04A0, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 121
-    { "Phase 2 exported capacitive reactive energy",       "varh", 0x04A4, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 122
-    { "Phase 2 imported inductive reactive energy",        "varh", 0x04A8, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 123
-    { "Phase 2 exported inductive reactive energy",        "varh", 0x04AC, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 124
+    REG("Phase 1 imported apparent power MAX", "VA", 0x0238, WORDS_4, SCALE_MILLI),
+    REG("Phase 1 exported apparent power MAX", "VA", 0x023C, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 imported apparent power MAX", "VA", 0x0240, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 exported apparent power MAX", "VA", 0x0244, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 imported apparent power MAX", "VA", 0x0248, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 exported apparent power MAX", "VA", 0x024C, WORDS_4, SCALE_MILLI),
+    REG("System imported apparent power MAX", "VA", 0x0250, WORDS_4, SCALE_MILLI),
+    REG("System exported apparent power MAX", "VA", 0x0254, WORDS_4, SCALE_MILLI),
 
-    { "Phase 3 imported capacitive reactive energy",       "varh", 0x04B0, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 125
-    { "Phase 3 exported capacitive reactive energy",       "varh", 0x04B4, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 126
-    { "Phase 3 imported inductive reactive energy",        "varh", 0x04B8, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 127
-    { "Phase 3 exported inductive reactive energy",        "varh", 0x04BC, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 128
+    REG("Phase 1 imported reactive power MAX", "var", 0x0258, WORDS_4, SCALE_MILLI),
+    REG("Phase 1 exported reactive power MAX", "var", 0x025C, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 imported reactive power MAX", "var", 0x0260, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 exported reactive power MAX", "var", 0x0264, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 imported reactive power MAX", "var", 0x0268, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 exported reactive power MAX", "var", 0x026C, WORDS_4, SCALE_MILLI),
+    REG("System imported reactive power MAX", "var", 0x0270, WORDS_4, SCALE_MILLI),
+    REG("System exported reactive power MAX", "var", 0x0274, WORDS_4, SCALE_MILLI),
 
-    { "System imported capacitive reactive energy",        "varh", 0x04C0, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 129
-    { "System exported capacitive reactive energy",        "varh", 0x04C4, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 130
-    { "System imported inductive reactive energy",         "varh", 0x04C8, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 131
-    { "System exported inductive reactive energy",         "varh", 0x04CC, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f }, // 132
+    REG("Phase 1 inductive power factor MAX", "-", 0x0278, WORDS_2, SCALE_MILLI),
+    REG("Phase 1 capacitive power factor MAX", "-", 0x027A, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 inductive power factor MAX", "-", 0x027C, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 capacitive power factor MAX", "-", 0x027E, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 inductive power factor MAX", "-", 0x0280, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 capacitive power factor MAX", "-", 0x0282, WORDS_2, SCALE_MILLI),
+    REG("System inductive power factor MAX", "-", 0x0284, WORDS_2, SCALE_MILLI),
+    REG("System capacitive power factor MAX", "-", 0x0286, WORDS_2, SCALE_MILLI),
 
-    // Experimental registers
-    //{ "Balance of system capacitive reactive energy (imp-exp)", "varh", 0x04D0, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f },
-    //{ "Balance of system inductive reactive energy (imp-exp)",  "varh", 0x04D4, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f },
-    //{ "Balance of system reactive energy (BAL-C + BAL-L)",      "varh", 0x04D8, 4, TARGET_REGISTER_FUNC_READ_INPUT, 0.001f },
+    REG("Phase 1 imported tangent phi MAX", "-", 0x0288, WORDS_2, SCALE_MILLI),
+    REG("Phase 1 exported tangent phi MAX", "-", 0x028A, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 imported tangent phi MAX", "-", 0x028C, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 exported tangent phi MAX", "-", 0x028E, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 imported tangent phi MAX", "-", 0x0290, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 exported tangent phi MAX", "-", 0x0292, WORDS_2, SCALE_MILLI),
+    REG("System imported tangent phi MAX", "-", 0x0294, WORDS_2, SCALE_MILLI),
+    REG("System exported tangent phi MAX", "-", 0x0296, WORDS_2, SCALE_MILLI),
+
+    REG("Phase 1-N voltage THD MAX", "%", 0x0298, WORDS_2, SCALE_MILLI),
+    REG("Phase 2-N voltage THD MAX", "%", 0x029A, WORDS_2, SCALE_MILLI),
+    REG("Phase 3-N voltage THD MAX", "%", 0x029C, WORDS_2, SCALE_MILLI),
+    REG("Line 12 voltage THD MAX", "%", 0x029E, WORDS_2, SCALE_MILLI),
+    REG("Line 23 voltage THD MAX", "%", 0x02A0, WORDS_2, SCALE_MILLI),
+    REG("Line 31 voltage THD MAX", "%", 0x02A2, WORDS_2, SCALE_MILLI),
+
+    REG("Phase 1 current THD MAX", "%", 0x02A4, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 current THD MAX", "%", 0x02A6, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 current THD MAX", "%", 0x02A8, WORDS_2, SCALE_MILLI),
+    REG("Neutral current THD MAX", "%", 0x02AA, WORDS_2, SCALE_MILLI),
+
+    REG("Phase 1 current DMD MAX", "A", 0x02AC, WORDS_2, SCALE_MILLI),
+    REG("Phase 2 current DMD MAX", "A", 0x02AE, WORDS_2, SCALE_MILLI),
+    REG("Phase 3 current DMD MAX", "A", 0x02B0, WORDS_2, SCALE_MILLI),
+    REG("System current DMD MAX", "A", 0x02B2, WORDS_2, SCALE_MILLI),
+
+    REG("Phase 1 imported active power DMD MAX", "W", 0x02B4, WORDS_4, SCALE_MILLI),
+    REG("Phase 1 exported active power DMD MAX", "W", 0x02B8, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 imported active power DMD MAX", "W", 0x02BC, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 exported active power DMD MAX", "W", 0x02C0, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 imported active power DMD MAX", "W", 0x02C4, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 exported active power DMD MAX", "W", 0x02C8, WORDS_4, SCALE_MILLI),
+    REG("System imported active power DMD MAX", "W", 0x02CC, WORDS_4, SCALE_MILLI),
+    REG("System exported active power DMD MAX", "W", 0x02D0, WORDS_4, SCALE_MILLI),
+
+    REG("Phase 1 imported apparent power DMD MAX", "VA", 0x02D4, WORDS_4, SCALE_MILLI),
+    REG("Phase 1 exported apparent power DMD MAX", "VA", 0x02D8, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 imported apparent power DMD MAX", "VA", 0x02DC, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 exported apparent power DMD MAX", "VA", 0x02E0, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 imported apparent power DMD MAX", "VA", 0x02E4, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 exported apparent power DMD MAX", "VA", 0x02E8, WORDS_4, SCALE_MILLI),
+    REG("System imported apparent power DMD MAX", "VA", 0x02EC, WORDS_4, SCALE_MILLI),
+    REG("System exported apparent power DMD MAX", "VA", 0x02F0, WORDS_4, SCALE_MILLI),
+
+    REG("Phase 1 imported reactive power DMD MAX", "var", 0x02F4, WORDS_4, SCALE_MILLI),
+    REG("Phase 1 exported reactive power DMD MAX", "var", 0x02F8, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 imported reactive power DMD MAX", "var", 0x02FC, WORDS_4, SCALE_MILLI),
+    REG("Phase 2 exported reactive power DMD MAX", "var", 0x0300, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 imported reactive power DMD MAX", "var", 0x0304, WORDS_4, SCALE_MILLI),
+    REG("Phase 3 exported reactive power DMD MAX", "var", 0x0308, WORDS_4, SCALE_MILLI),
+    REG("System imported reactive power DMD MAX", "var", 0x030C, WORDS_4, SCALE_MILLI),
+    REG("System exported reactive power DMD MAX", "var", 0x0310, WORDS_4, SCALE_MILLI),
+
+    // MINIMUM VALUES
+    REG("System Active power MIN", "W", 0x0314, WORDS_4, SCALE_MILLI),
+    REG("System Apparent power MIN", "VA", 0x0318, WORDS_4, SCALE_MILLI),
+    REG("System Reactive power MIN", "var", 0x031C, WORDS_4, SCALE_MILLI),
+
+    // ===== CHUNK 4: 0x0400 .. 0x04DB =====
+    // ENERGY COUNTERS (sheet INTEGER M.U. = 0.1)
+    REG("Phase 1 imported active energy", "Wh", 0x0400, WORDS_4, SCALE_DECI),
+    REG("Phase 1 exported active energy", "Wh", 0x0404, WORDS_4, SCALE_DECI),
+    REG("Phase 2 imported active energy", "Wh", 0x0408, WORDS_4, SCALE_DECI),
+    REG("Phase 2 exported active energy", "Wh", 0x040C, WORDS_4, SCALE_DECI),
+    REG("Phase 3 imported active energy", "Wh", 0x0410, WORDS_4, SCALE_DECI),
+    REG("Phase 3 exported active energy", "Wh", 0x0414, WORDS_4, SCALE_DECI),
+    REG("System imported active energy", "Wh", 0x0418, WORDS_4, SCALE_DECI),
+    REG("System exported active energy", "Wh", 0x041C, WORDS_4, SCALE_DECI),
+    REG("Balance of system active energy (imp-exp)", "Wh", 0x0420, WORDS_4, SCALE_DECI),
+
+    REG("Phase 1 imported capacitive apparent energy", "VAh", 0x0424, WORDS_4, SCALE_DECI),
+    REG("Phase 1 exported capacitive apparent energy", "VAh", 0x0428, WORDS_4, SCALE_DECI),
+    REG("Phase 1 imported inductive apparent energy", "VAh", 0x042C, WORDS_4, SCALE_DECI),
+    REG("Phase 1 exported inductive apparent energy", "VAh", 0x0430, WORDS_4, SCALE_DECI),
+    REG("Phase 1 imported apparent energy", "VAh", 0x0434, WORDS_4, SCALE_DECI),
+    REG("Phase 1 exported apparent energy", "VAh", 0x0438, WORDS_4, SCALE_DECI),
+    REG("Phase 2 imported capacitive apparent energy", "VAh", 0x043C, WORDS_4, SCALE_DECI),
+    REG("Phase 2 exported capacitive apparent energy", "VAh", 0x0440, WORDS_4, SCALE_DECI),
+    REG("Phase 2 imported inductive apparent energy", "VAh", 0x0444, WORDS_4, SCALE_DECI),
+    REG("Phase 2 exported inductive apparent energy", "VAh", 0x0448, WORDS_4, SCALE_DECI),
+    REG("Phase 2 imported apparent energy", "VAh", 0x044C, WORDS_4, SCALE_DECI),
+    REG("Phase 2 exported apparent energy", "VAh", 0x0450, WORDS_4, SCALE_DECI),
+    REG("Phase 3 imported capacitive apparent energy", "VAh", 0x0454, WORDS_4, SCALE_DECI),
+    REG("Phase 3 exported capacitive apparent energy", "VAh", 0x0458, WORDS_4, SCALE_DECI),
+    REG("Phase 3 imported inductive apparent energy", "VAh", 0x045C, WORDS_4, SCALE_DECI),
+    REG("Phase 3 exported inductive apparent energy", "VAh", 0x0460, WORDS_4, SCALE_DECI),
+    REG("Phase 3 imported apparent energy", "VAh", 0x0464, WORDS_4, SCALE_DECI),
+    REG("Phase 3 exported apparent energy", "VAh", 0x0468, WORDS_4, SCALE_DECI),
+    REG("System imported capacitive apparent energy", "VAh", 0x046C, WORDS_4, SCALE_DECI),
+    REG("System exported capacitive apparent energy", "VAh", 0x0470, WORDS_4, SCALE_DECI),
+    REG("System imported inductive apparent energy", "VAh", 0x0474, WORDS_4, SCALE_DECI),
+    REG("System exported inductive apparent energy", "VAh", 0x0478, WORDS_4, SCALE_DECI),
+    REG("System imported apparent energy", "VAh", 0x047C, WORDS_4, SCALE_DECI),
+    REG("System exported apparent energy", "VAh", 0x0480, WORDS_4, SCALE_DECI),
+    REG("Balance of system capacitive apparent energy (imp-exp)", "VAh", 0x0484, WORDS_4, SCALE_DECI),
+    REG("Balance of system inductive apparent energy (imp-exp)", "VAh", 0x0488, WORDS_4, SCALE_DECI),
+    REG("Balance of system apparent energy (BAL-C + BAL-L)", "VAh", 0x048C, WORDS_4, SCALE_DECI),
+
+    REG("Phase 1 imported capacitive reactive energy", "varh", 0x0490, WORDS_4, SCALE_DECI),
+    REG("Phase 1 exported capacitive reactive energy", "varh", 0x0494, WORDS_4, SCALE_DECI),
+    REG("Phase 1 imported inductive reactive energy", "varh", 0x0498, WORDS_4, SCALE_DECI),
+    REG("Phase 1 exported inductive reactive energy", "varh", 0x049C, WORDS_4, SCALE_DECI),
+    REG("Phase 2 imported capacitive reactive energy", "varh", 0x04A0, WORDS_4, SCALE_DECI),
+    REG("Phase 2 exported capacitive reactive energy", "varh", 0x04A4, WORDS_4, SCALE_DECI),
+    REG("Phase 2 imported inductive reactive energy", "varh", 0x04A8, WORDS_4, SCALE_DECI),
+    REG("Phase 2 exported inductive reactive energy", "varh", 0x04AC, WORDS_4, SCALE_DECI),
+    REG("Phase 3 imported capacitive reactive energy", "varh", 0x04B0, WORDS_4, SCALE_DECI),
+    REG("Phase 3 exported capacitive reactive energy", "varh", 0x04B4, WORDS_4, SCALE_DECI),
+    REG("Phase 3 imported inductive reactive energy", "varh", 0x04B8, WORDS_4, SCALE_DECI),
+    REG("Phase 3 exported inductive reactive energy", "varh", 0x04BC, WORDS_4, SCALE_DECI),
+    REG("System imported capacitive reactive energy", "varh", 0x04C0, WORDS_4, SCALE_DECI),
+    REG("System exported capacitive reactive energy", "varh", 0x04C4, WORDS_4, SCALE_DECI),
+    REG("System imported inductive reactive energy", "varh", 0x04C8, WORDS_4, SCALE_DECI),
+    REG("System exported inductive reactive energy", "varh", 0x04CC, WORDS_4, SCALE_DECI),
+    REG("Balance of system capacitive reactive energy (imp-exp)", "varh", 0x04D0, WORDS_4, SCALE_DECI),
+    REG("Balance of system inductive reactive energy (imp-exp)", "varh", 0x04D4, WORDS_4, SCALE_DECI),
+    REG("Balance of system reactive energy (BAL-C + BAL-L)", "varh", 0x04D8, WORDS_4, SCALE_DECI),
+
+    // ===== CHUNK 5: 0x0500 .. 0x063E =====
+    // VOLTAGE/CURRENT HARMONIC COMPONENTS UP TO 15th
+    HARMONIC16("Phase 1-N voltage", 0x0500),
+    HARMONIC16("Phase 2-N voltage", 0x0520),
+    HARMONIC16("Phase 3-N voltage", 0x0540),
+    HARMONIC16("Line 12 voltage", 0x0560),
+    HARMONIC16("Line 23 voltage", 0x0580),
+    HARMONIC16("Line 31 voltage", 0x05A0),
+    HARMONIC16("Phase 1 current", 0x05C0),
+    HARMONIC16("Phase 2 current", 0x05E0),
+    HARMONIC16("Phase 3 current", 0x0600),
+    HARMONIC16("Neutral current", 0x0620)
 };
 
 static const MultimeterRegisterSet s_target_register_set = {

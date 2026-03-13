@@ -7,7 +7,7 @@ idf_component_register(
         "."
     REQUIRES 
         driver
-        storage
+        devices
         utils
         esp-modbus
 )
