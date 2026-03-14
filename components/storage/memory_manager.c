@@ -12,7 +12,7 @@
 
 #define TAG "MEMORY_MGR"
 
-#if CONFIG_MEMORY_MANAGER_ENABLE
+#if defined(CONFIG_MEMORY_MANAGER_ENABLE) && CONFIG_MEMORY_MANAGER_ENABLE
 
 typedef struct {
     uint8_t slave_addr;
@@ -31,26 +31,33 @@ static void memory_writer_task(void *arg)
 {
     (void)arg;
 
-    memory_ingest_item_t item = {0};
+    memory_ingest_item_t *item = pvPortMalloc(sizeof(*item));
+    if (item == NULL) {
+        LOG_ERROR(TAG, "memory_writer: failed to allocate ingest item buffer");
+        vTaskDelete(NULL);
+        return;
+    }
+
+    memset(item, 0, sizeof(*item));
     while (true) {
-        if (xQueueReceive(s_ingest_queue, &item, portMAX_DELAY) != pdTRUE) {
+        if (xQueueReceive(s_ingest_queue, item, portMAX_DELAY) != pdTRUE) {
             continue;
         }
 
         esp_err_t err = memory_enqueue_modbus_sample(
-            item.slave_addr,
-            item.start_reg,
-            item.registers,
-            item.reg_count,
-            item.timestamp_s
+            item->slave_addr,
+            item->start_reg,
+            item->registers,
+            item->reg_count,
+            item->timestamp_s
         );
         if (err != ESP_OK) {
             LOG_ERROR(
                 TAG,
                 "Flash persist failed: slave=%u start=0x%04X count=%u err=0x%x",
-                (unsigned)item.slave_addr,
-                (unsigned)item.start_reg,
-                (unsigned)item.reg_count,
+                (unsigned)item->slave_addr,
+                (unsigned)item->start_reg,
+                (unsigned)item->reg_count,
                 err
             );
         }
@@ -156,15 +163,22 @@ esp_err_t memory_manager_enqueue_modbus_sample(
         return ESP_ERR_INVALID_ARG;
     }
 
-    memory_ingest_item_t item = {
+    memory_ingest_item_t *item = pvPortMalloc(sizeof(*item));
+    if (item == NULL) {
+        LOG_WARNING(TAG, "Ingest allocation failed: count=%u", (unsigned)reg_count);
+        return ESP_ERR_NO_MEM;
+    }
+
+    *item = (memory_ingest_item_t){
         .slave_addr = slave_addr,
         .start_reg = start_reg,
         .reg_count = reg_count,
         .timestamp_s = timestamp_s,
     };
-    memcpy(item.registers, registers, (size_t)reg_count * sizeof(uint16_t));
+    memcpy(item->registers, registers, (size_t)reg_count * sizeof(uint16_t));
 
-    if (xQueueSend(s_ingest_queue, &item, 0) != pdTRUE) {
+    if (xQueueSend(s_ingest_queue, item, 0) != pdTRUE) {
+        vPortFree(item);
         LOG_WARNING(
             TAG,
             "Ingest queue full: slave=%u start=0x%04X count=%u",
@@ -175,6 +189,7 @@ esp_err_t memory_manager_enqueue_modbus_sample(
         return ESP_ERR_NO_MEM;
     }
 
+    vPortFree(item);
     return ESP_OK;
 }
 

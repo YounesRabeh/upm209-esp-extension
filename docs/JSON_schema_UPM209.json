@@ -72,3 +72,5 @@
 	},
 	"required": ["companyID", "schemaID", "timestamp", "device_id", "firmware_version", "device_type", "measurements"]
   }
+
+  

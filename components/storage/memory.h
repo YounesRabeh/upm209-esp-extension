@@ -66,6 +66,21 @@ esp_err_t memory_peek_modbus_sample(
 );
 
 /**
+ * @brief Retrieve one Modbus sample by queue index without removing it.
+ * @param index Zero-based index from the queue head (0 = oldest sample)
+ * @param meta_out Optional metadata output
+ * @param registers_out Output array for raw register payload
+ * @param max_registers Capacity of registers_out in words
+ * @return ESP_OK on success, ESP_ERR_NOT_FOUND if index is out of range, or error code.
+ */
+esp_err_t memory_peek_modbus_sample_at(
+    uint32_t index,
+    memory_sample_meta_t *meta_out,
+    uint16_t *registers_out,
+    uint16_t max_registers
+);
+
+/**
  * @brief Retrieve and remove the next Modbus sample from memory. The sample metadata and register values are copied to the provided output parameters.
  * @param meta_out Pointer to a memory_sample_meta_t structure where the sample metadata will be
  * @param registers_out Pointer to an array where the register values will be copied
