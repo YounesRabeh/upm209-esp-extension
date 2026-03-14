@@ -1,14 +1,15 @@
 #include "modbus_manager.h"
 
 #include <inttypes.h>
+#include <limits.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "logging.h"
 #include "modbus_master.h"
-#include "modbus_io.h"
 #include "sdkconfig.h"
 #include "ump209.h"
 
@@ -23,85 +24,61 @@
 #define MB_UART_TXD               7
 #define MB_UART_RXD               8
 #define MB_UART_RTS               4
+#define MB_POLL_PERIOD_MS         2000U
+#define MB_TASK_STACK_SIZE        4096
+#define MB_TASK_PRIORITY          5
 #define MB_INIT_DELAY_MS          500U
 #define MB_FIRST_POLL_DELAY_MS    500U
 #define MB_TEST_REQ_DELAY_MS      25U
+#define MB_BLOCK_RETRY_DELAY_MS   20U
+#define MB_FALLBACK_CHUNK_WORDS   64U
+#define MB_FALLBACK_MIN_CHUNK_WORDS 8U
 #define MB_PROBE_REG              0x0000U
 #define MB_MAX_REQ_WORDS          125U
+#define MB_MAX_CYCLE_WORDS        1200U
 #define MB_MAX_FAIL_REPORT_LINES  128U
-#define MB_MAX_RAM_ENTRIES        512U
-#define MB_MAX_RAM_WORDS_PER_ENTRY 4U
+#define MB_VERBOSE_DEBUG          0
+
+#if MB_VERBOSE_DEBUG
+#define MB_LOG_DEBUG(...) LOG_DEBUG(__VA_ARGS__)
+#else
+#define MB_LOG_DEBUG(...) do { } while (0)
+#endif
 
 typedef struct {
-    uint16_t index;
     uint8_t fc;
     uint16_t start;
     uint16_t count;
     esp_err_t err;
-    const char *name;
-} modbus_fail_entry_t;
-
-typedef struct {
-    bool valid;
-    uint8_t fc;
-    uint16_t start;
-    uint16_t count;
-    uint16_t words[MB_MAX_RAM_WORDS_PER_ENTRY];
-} modbus_ram_entry_t;
+} modbus_block_fail_entry_t;
 
 static TaskHandle_t s_task_handle = NULL;
 static bool s_started = false;
 static uint16_t s_read_buf[MB_MAX_REQ_WORDS] = {0};
-static modbus_ram_entry_t s_ram_entries[MB_MAX_RAM_ENTRIES] = {0};
-static uint32_t s_ram_entries_count = 0U;
-static uint32_t s_ram_entries_dropped = 0U;
-static modbus_fail_entry_t s_fail_entries[MB_MAX_FAIL_REPORT_LINES] = {0};
+static uint16_t s_cycle_buf[MB_MAX_CYCLE_WORDS] = {0};
+static modbus_block_fail_entry_t s_fail_entries[MB_MAX_FAIL_REPORT_LINES] = {0};
+static modbus_sample_sink_t s_sample_sink = NULL;
+static void *s_sample_sink_ctx = NULL;
 
 static void modbus_record_fail(
-    uint32_t index,
-    const MultimeterRegister *reg,
+    uint8_t fc,
+    uint16_t start,
+    uint16_t count,
     esp_err_t err,
     uint32_t *fail_counter
 )
 {
-    if (fail_counter == NULL || reg == NULL) {
+    if (fail_counter == NULL) {
         return;
     }
     ++(*fail_counter);
     if (*fail_counter <= MB_MAX_FAIL_REPORT_LINES) {
-        modbus_fail_entry_t *entry = &s_fail_entries[*fail_counter - 1U];
-        entry->index = (uint16_t)index;
-        entry->fc = reg->function_code;
-        entry->start = reg->reg_start;
-        entry->count = reg->reg_count;
+        modbus_block_fail_entry_t *entry = &s_fail_entries[*fail_counter - 1U];
+        entry->fc = fc;
+        entry->start = start;
+        entry->count = count;
         entry->err = err;
-        entry->name = reg->name;
     }
-}
-
-static void modbus_ram_store(uint32_t index, const MultimeterRegister *reg, const uint16_t *data)
-{
-    if (reg == NULL || data == NULL) {
-        return;
-    }
-    if (index >= MB_MAX_RAM_ENTRIES) {
-        ++s_ram_entries_dropped;
-        return;
-    }
-
-    modbus_ram_entry_t *entry = &s_ram_entries[index];
-    memset(entry, 0, sizeof(*entry));
-    entry->valid = true;
-    entry->fc = reg->function_code;
-    entry->start = reg->reg_start;
-    entry->count = reg->reg_count;
-
-    uint16_t copy_words = reg->reg_count;
-    if (copy_words > MB_MAX_RAM_WORDS_PER_ENTRY) {
-        copy_words = MB_MAX_RAM_WORDS_PER_ENTRY;
-    }
-    memcpy(entry->words, data, (size_t)copy_words * sizeof(uint16_t));
-    ++s_ram_entries_count;
 }
 
 static esp_err_t modbus_read_by_fc(uint8_t fc, uint16_t start_reg, uint16_t reg_count, uint16_t *dest)
@@ -115,30 +92,170 @@ static esp_err_t modbus_read_by_fc(uint8_t fc, uint16_t start_reg, uint16_t reg_
     return ESP_ERR_INVALID_ARG;
 }
 
-static void modbus_validate_ump209_register_set(void)
+static esp_err_t modbus_read_with_recovery(
+    uint8_t fc,
+    uint16_t start_reg,
+    uint16_t reg_count,
+    uint16_t *dest
+)
+{
+    esp_err_t err = modbus_read_by_fc(fc, start_reg, reg_count, dest);
+    if (err == ESP_OK) {
+        return ESP_OK;
+    }
+
+    esp_err_t recover_err = modbus_recover_link();
+    if (recover_err != ESP_OK) {
+        LOG_WARNING(TAG, "Link recovery failed after read error: recover_err=0x%x", recover_err);
+    }
+
+    if (MB_BLOCK_RETRY_DELAY_MS > 0U) {
+        vTaskDelay(pdMS_TO_TICKS(MB_BLOCK_RETRY_DELAY_MS));
+    }
+
+    esp_err_t retry_err = modbus_read_by_fc(fc, start_reg, reg_count, dest);
+    if (retry_err == ESP_OK) {
+        MB_LOG_DEBUG(
+            TAG,
+            "Recovered block after retry: fc=0x%02X start=0x%04X count=%u first_err=0x%x",
+            (unsigned)fc,
+            (unsigned)start_reg,
+            (unsigned)reg_count,
+            err
+        );
+    }
+    return retry_err;
+}
+
+static esp_err_t modbus_read_block_chunked(
+    uint8_t fc,
+    uint16_t start_reg,
+    uint16_t reg_count,
+    uint16_t chunk_words,
+    uint16_t *dest
+)
+{
+    if (dest == NULL || reg_count == 0U || chunk_words == 0U) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    uint16_t offset = 0U;
+    while (offset < reg_count) {
+        uint16_t chunk = (uint16_t)(reg_count - offset);
+        if (chunk > chunk_words) {
+            chunk = chunk_words;
+        }
+
+        esp_err_t err = modbus_read_with_recovery(
+            fc,
+            (uint16_t)(start_reg + offset),
+            chunk,
+            &dest[offset]
+        );
+        if (err != ESP_OK) {
+            MB_LOG_DEBUG(
+                TAG,
+                "Chunk read failed: fc=0x%02X start=0x%04X count=%u err=0x%x",
+                (unsigned)fc,
+                (unsigned)(start_reg + offset),
+                (unsigned)chunk,
+                err
+            );
+            return err;
+        }
+        offset = (uint16_t)(offset + chunk);
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t modbus_read_block_resilient(
+    uint8_t fc,
+    uint16_t start_reg,
+    uint16_t reg_count,
+    uint16_t *dest
+)
+{
+    esp_err_t err = modbus_read_with_recovery(fc, start_reg, reg_count, dest);
+    if (err == ESP_OK) {
+        return ESP_OK;
+    }
+
+    uint16_t chunk_words = MB_FALLBACK_CHUNK_WORDS;
+    if (chunk_words > reg_count) {
+        chunk_words = reg_count;
+    }
+    if (chunk_words < MB_FALLBACK_MIN_CHUNK_WORDS) {
+        chunk_words = MB_FALLBACK_MIN_CHUNK_WORDS;
+    }
+
+    esp_err_t last_err = err;
+    while (chunk_words >= MB_FALLBACK_MIN_CHUNK_WORDS && chunk_words <= reg_count) {
+        MB_LOG_DEBUG(
+            TAG,
+            "Block fallback to chunked reads: fc=0x%02X start=0x%04X count=%u chunk=%u first_err=0x%x",
+            (unsigned)fc,
+            (unsigned)start_reg,
+            (unsigned)reg_count,
+            (unsigned)chunk_words,
+            last_err
+        );
+
+        esp_err_t chunk_err = modbus_read_block_chunked(fc, start_reg, reg_count, chunk_words, dest);
+        if (chunk_err == ESP_OK) {
+            MB_LOG_DEBUG(
+                TAG,
+                "Recovered block with chunked reads: fc=0x%02X start=0x%04X count=%u chunk=%u",
+                (unsigned)fc,
+                (unsigned)start_reg,
+                (unsigned)reg_count,
+                (unsigned)chunk_words
+            );
+            return ESP_OK;
+        }
+
+        last_err = chunk_err;
+        if (chunk_words == MB_FALLBACK_MIN_CHUNK_WORDS) {
+            break;
+        }
+        chunk_words = (uint16_t)(chunk_words / 2U);
+        if (chunk_words < MB_FALLBACK_MIN_CHUNK_WORDS) {
+            chunk_words = MB_FALLBACK_MIN_CHUNK_WORDS;
+        }
+    }
+
+    return last_err;
+}
+
+static esp_err_t modbus_sample_and_store_cycle(void)
 {
     const MultimeterRegisterSet *set = ump209_get_target_register_set();
     if (set == NULL || set->registers == NULL || set->size == 0U) {
         LOG_ERROR(TAG, "UPM209 register set unavailable");
-        return;
+        return ESP_ERR_INVALID_STATE;
     }
 
     uint32_t total = (uint32_t)set->size;
-    uint32_t ok = 0U;
+    uint32_t block_ok = 0U;
     uint32_t fail = 0U;
     uint32_t skipped = 0U;
     uint32_t requests = 0U;
+    uint32_t cycle_words = 0U;
+    uint32_t copied_words = 0U;
+    bool cycle_overflow = false;
+    bool cycle_start_set = false;
+    uint16_t cycle_start_reg = 0U;
+    esp_err_t first_fail_err = ESP_OK;
+
     memset(s_fail_entries, 0, sizeof(s_fail_entries));
-    memset(s_ram_entries, 0, sizeof(s_ram_entries));
-    s_ram_entries_count = 0U;
-    s_ram_entries_dropped = 0U;
 
     LOG_INFO(
         TAG,
-        "TEST REPORT START: register-set validation slave=%u entries=%" PRIu32,
+        "CYCLE START: slave=%u entries=%" PRIu32,
         (unsigned)MB_SLAVE_ADDR,
         (uint32_t)set->size
     );
+
     uint32_t i = 0U;
     while (i < (uint32_t)set->size) {
         const MultimeterRegister *first = &set->registers[i];
@@ -187,7 +304,7 @@ static void modbus_validate_ump209_register_set(void)
 
         uint16_t block_count = (uint16_t)(block_end - (uint32_t)block_start);
         ++requests;
-        LOG_DEBUG(
+        MB_LOG_DEBUG(
             TAG,
             "Block request: fc=0x%02X start=0x%04X count=%u entries=%" PRIu32,
             (unsigned)block_fc,
@@ -195,23 +312,49 @@ static void modbus_validate_ump209_register_set(void)
             (unsigned)block_count,
             (uint32_t)(j - i)
         );
-        esp_err_t block_err = modbus_read_by_fc(block_fc, block_start, block_count, s_read_buf);
+        esp_err_t block_err = modbus_read_block_resilient(block_fc, block_start, block_count, s_read_buf);
 
         if (block_err == ESP_OK) {
-            for (uint32_t k = i; k < j; ++k) {
-                const MultimeterRegister *reg = &set->registers[k];
-                uint16_t offset = (uint16_t)(reg->reg_start - block_start);
-                if ((uint16_t)(offset + reg->reg_count) > block_count) {
-                    modbus_record_fail(k, reg, ESP_ERR_INVALID_SIZE, &fail);
-                    continue;
+            ++block_ok;
+            if (!cycle_start_set) {
+                cycle_start_reg = block_start;
+                cycle_start_set = true;
+            }
+
+            uint32_t next_cycle_words = cycle_words + block_count;
+            if (next_cycle_words > (uint32_t)UINT16_MAX) {
+                if (!cycle_overflow) {
+                    LOG_ERROR(
+                        TAG,
+                        "Merged payload overflow: current=%" PRIu32 " + block=%u exceeds uint16 range",
+                        cycle_words,
+                        (unsigned)block_count
+                    );
                 }
-                ++ok;
-                modbus_ram_store(k, reg, &s_read_buf[offset]);
+                cycle_overflow = true;
+            } else {
+                cycle_words = next_cycle_words;
+                uint32_t next_copied_words = copied_words + block_count;
+                if (next_copied_words > (uint32_t)MB_MAX_CYCLE_WORDS) {
+                    if (!cycle_overflow) {
+                        LOG_ERROR(
+                            TAG,
+                            "Merged payload overflow: current=%" PRIu32 " + block=%u exceeds max cycle capacity=%u",
+                            copied_words,
+                            (unsigned)block_count,
+                            (unsigned)MB_MAX_CYCLE_WORDS
+                        );
+                    }
+                    cycle_overflow = true;
+                } else {
+                    memcpy(&s_cycle_buf[copied_words], s_read_buf, (size_t)block_count * sizeof(uint16_t));
+                    copied_words = next_copied_words;
+                }
             }
         } else {
-            for (uint32_t k = i; k < j; ++k) {
-                const MultimeterRegister *reg = &set->registers[k];
-                modbus_record_fail(k, reg, block_err, &fail);
+            modbus_record_fail(block_fc, block_start, block_count, block_err, &fail);
+            if (first_fail_err == ESP_OK) {
+                first_fail_err = block_err;
             }
         }
 
@@ -223,26 +366,26 @@ static void modbus_validate_ump209_register_set(void)
 
     LOG_INFO(
         TAG,
-        "TEST SUMMARY: total=%" PRIu32 " ok=%" PRIu32 " fail=%" PRIu32 " skipped=%" PRIu32 " requests=%" PRIu32,
+        "CYCLE SUMMARY: total=%" PRIu32 " block_ok=%" PRIu32 " fail=%" PRIu32 " skipped=%" PRIu32 " requests=%" PRIu32 " words=%" PRIu32,
         total,
-        ok,
+        block_ok,
         fail,
         skipped,
-        requests
+        requests,
+        cycle_words
     );
 
     const uint32_t printed = (fail < MB_MAX_FAIL_REPORT_LINES) ? fail : MB_MAX_FAIL_REPORT_LINES;
     for (uint32_t i = 0U; i < printed; ++i) {
-        const modbus_fail_entry_t *e = &s_fail_entries[i];
+        const modbus_block_fail_entry_t *e = &s_fail_entries[i];
         LOG_WARNING(
             TAG,
-            "FAIL [%u] fc=0x%02X start=0x%04X count=%u err=0x%x name=%s",
-            (unsigned)e->index,
+            "FAIL BLOCK [%u] fc=0x%02X start=0x%04X count=%u err=0x%x",
+            (unsigned)i,
             (unsigned)e->fc,
             (unsigned)e->start,
             (unsigned)e->count,
-            e->err,
-            (e->name != NULL) ? e->name : "(null)"
+            e->err
         );
     }
 
@@ -255,39 +398,93 @@ static void modbus_validate_ump209_register_set(void)
         );
     }
 
-    if (fail == 0U && skipped == 0U) {
-        LOG_OK(TAG, "ALL UPM209 REGISTER-SET ENTRIES RESPONDED");
+    if (fail != 0U || skipped != 0U || !cycle_start_set) {
+        LOG_WARNING(TAG, "Cycle not stored: fail=%" PRIu32 " skipped=%" PRIu32, fail, skipped);
+        return (first_fail_err != ESP_OK) ? first_fail_err : ESP_FAIL;
     }
-    LOG_INFO(
+
+    if (cycle_overflow || cycle_words == 0U) {
+        LOG_WARNING(
+            TAG,
+            "Cycle not stored: merged words=%" PRIu32 " exceed configured capacity=%u",
+            cycle_words,
+            (unsigned)MB_MAX_CYCLE_WORDS
+        );
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    time_t now = time(NULL);
+    uint32_t timestamp_s = (now > 0) ? (uint32_t)now : 0U;
+
+    if (s_sample_sink != NULL) {
+        esp_err_t sink_err = s_sample_sink(
+            MB_SLAVE_ADDR,
+            cycle_start_reg,
+            s_cycle_buf,
+            (uint16_t)copied_words,
+            timestamp_s,
+            s_sample_sink_ctx
+        );
+        if (sink_err != ESP_OK) {
+            LOG_WARNING(
+                TAG,
+                "Cycle publish failed: start=0x%04X words=%" PRIu32 " err=0x%x",
+                (unsigned)cycle_start_reg,
+                cycle_words,
+                sink_err
+            );
+        }
+    } else {
+        MB_LOG_DEBUG(TAG, "No sample sink registered: cycle dropped");
+    }
+
+    LOG_OK(
         TAG,
-        "RAM STORE SUMMARY: stored=%" PRIu32 " dropped=%" PRIu32 " capacity=%u",
-        s_ram_entries_count,
-        s_ram_entries_dropped,
-        (unsigned)MB_MAX_RAM_ENTRIES
+        "Cycle sampled: start=0x%04X words=%" PRIu32 " ts=%" PRIu32,
+        (unsigned)cycle_start_reg,
+        cycle_words,
+        timestamp_s
     );
-    LOG_INFO(TAG, "TEST REPORT END");
+    return ESP_OK;
 }
 
 static void modbus_sampling_task(void *arg)
 {
     (void)arg;
+    TickType_t period_ticks = pdMS_TO_TICKS(MB_POLL_PERIOD_MS);
+    if (period_ticks == 0) {
+        period_ticks = 1;
+    }
 
     if (MB_FIRST_POLL_DELAY_MS > 0U) {
-        LOG_DEBUG(TAG, "First poll delay: %u ms", (unsigned)MB_FIRST_POLL_DELAY_MS);
+        MB_LOG_DEBUG(TAG, "First poll delay: %u ms", (unsigned)MB_FIRST_POLL_DELAY_MS);
         vTaskDelay(pdMS_TO_TICKS(MB_FIRST_POLL_DELAY_MS));
     }
 
-    modbus_validate_ump209_register_set();
-    LOG_INFO(TAG, "One-shot validation completed, task stopping");
-    s_started = false;
-    s_task_handle = NULL;
-    vTaskDelete(NULL);
+    while (true) {
+        esp_err_t err = modbus_sample_and_store_cycle();
+        if (err != ESP_OK) {
+            LOG_WARNING(TAG, "Cycle completed without persistence: err=0x%x", err);
+        }
+        vTaskDelay(period_ticks);
+    }
+}
+
+esp_err_t modbus_manager_set_sample_sink(modbus_sample_sink_t sink, void *ctx)
+{
+    s_sample_sink = sink;
+    s_sample_sink_ctx = ctx;
+    return ESP_OK;
 }
 
 esp_err_t modbus_manager_start(void)
 {
     if (s_started) {
         return ESP_OK;
+    }
+
+    if (s_sample_sink == NULL) {
+        LOG_WARNING(TAG, "No sample sink configured: Modbus cycles will not be persisted");
     }
 
     esp_err_t err = modbus_init(
@@ -331,9 +528,9 @@ esp_err_t modbus_manager_start(void)
     BaseType_t task_ok = xTaskCreate(
         modbus_sampling_task,
         "modbus_sampling",
-        CONFIG_MODBUS_MANAGER_TASK_STACK_SIZE,
+        MB_TASK_STACK_SIZE,
         NULL,
-        CONFIG_MODBUS_MANAGER_TASK_PRIORITY,
+        MB_TASK_PRIORITY,
         &s_task_handle
     );
     if (task_ok != pdPASS) {
@@ -345,14 +542,16 @@ esp_err_t modbus_manager_start(void)
     if (probe_ok) {
         LOG_OK(
             TAG,
-            "Started: slave=%u mode=ump209-regset-validation one-shot",
-            (unsigned)MB_SLAVE_ADDR
+            "Started: slave=%u mode=periodic-sample-publish period_ms=%u",
+            (unsigned)MB_SLAVE_ADDR,
+            (unsigned)MB_POLL_PERIOD_MS
         );
     } else {
         LOG_WARNING(
             TAG,
-            "Started with warnings: slave=%u mode=ump209-regset-validation one-shot",
-            (unsigned)MB_SLAVE_ADDR
+            "Started with warnings: slave=%u mode=periodic-sample-publish period_ms=%u",
+            (unsigned)MB_SLAVE_ADDR,
+            (unsigned)MB_POLL_PERIOD_MS
         );
     }
 
@@ -365,6 +564,13 @@ bool modbus_manager_is_running(void)
 }
 
 #else
+
+esp_err_t modbus_manager_set_sample_sink(modbus_sample_sink_t sink, void *ctx)
+{
+    (void)sink;
+    (void)ctx;
+    return ESP_OK;
+}
 
 esp_err_t modbus_manager_start(void)
 {

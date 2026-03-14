@@ -376,7 +376,16 @@ static esp_err_t read_sample_locked(
             ESP_RETURN_ON_ERROR(read_at_locked(payload_offset, registers_out, payload_size), TAG, "Failed reading payload");
 
             uint16_t crc = crc16_modbus((const uint8_t *)registers_out, payload_size);
-            ESP_RETURN_ON_FALSE(crc == hdr.payload_crc16, ESP_ERR_INVALID_CRC, TAG, "CRC mismatch");
+            if (crc != hdr.payload_crc16) {
+                LOG_ERROR(TAG, "CRC mismatch");
+                if (consume) {
+                    s_meta.head = (s_meta.head + rec_size) % s_meta.capacity;
+                    s_meta.used -= rec_size;
+                    s_meta.count--;
+                    ESP_RETURN_ON_ERROR(write_meta_locked(), TAG, "Failed to persist corrupted record drop");
+                }
+                return ESP_ERR_INVALID_CRC;
+            }
         }
 
         if (meta_out != NULL) {
@@ -394,6 +403,113 @@ static esp_err_t read_sample_locked(
         }
 
         return ESP_OK;
+    }
+
+    return ESP_ERR_NOT_FOUND;
+}
+
+static esp_err_t read_sample_at_locked(
+    uint32_t index,
+    memory_sample_meta_t *meta_out,
+    uint16_t *registers_out,
+    uint16_t max_registers
+)
+{
+    if (index >= s_meta.count) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    uint32_t cursor = s_meta.head;
+    uint32_t used_remaining = s_meta.used;
+    uint32_t sample_index = 0U;
+
+    while (used_remaining > 0U) {
+        if (cursor > s_meta.tail) {
+            uint32_t to_end = s_meta.capacity - cursor;
+            if (to_end < sizeof(memory_record_header_t)) {
+                cursor = 0U;
+                continue;
+            }
+        }
+
+        memory_record_header_t hdr = {0};
+        esp_err_t err = read_header_locked(cursor, &hdr);
+        if (err != ESP_OK) {
+            return err;
+        }
+
+        if (hdr.magic == RECORD_MAGIC_WRAP) {
+            if (used_remaining < sizeof(memory_record_header_t)) {
+                LOG_ERROR(TAG, "Invalid wrap marker size, clearing queue");
+                err = reset_meta_locked();
+                return (err == ESP_OK) ? ESP_ERR_INVALID_SIZE : err;
+            }
+
+            cursor = (cursor + sizeof(memory_record_header_t)) % s_meta.capacity;
+            used_remaining -= sizeof(memory_record_header_t);
+            continue;
+        }
+
+        if (hdr.magic != RECORD_MAGIC_DATA) {
+            if (cursor > s_meta.tail) {
+                cursor = 0U;
+                continue;
+            }
+            LOG_ERROR(TAG, "Corrupted record magic=0x%08" PRIx32 ", clearing queue", hdr.magic);
+            err = reset_meta_locked();
+            return (err == ESP_OK) ? ESP_ERR_INVALID_CRC : err;
+        }
+
+        if (hdr.reg_count == 0U || hdr.reg_count > CONFIG_MEMORY_MAX_REGISTERS) {
+            LOG_ERROR(TAG, "Invalid reg_count=%u, clearing queue", hdr.reg_count);
+            err = reset_meta_locked();
+            return (err == ESP_OK) ? ESP_ERR_INVALID_SIZE : err;
+        }
+
+        uint32_t payload_size = (uint32_t)hdr.reg_count * sizeof(uint16_t);
+        uint32_t rec_size = record_size_bytes(hdr.reg_count);
+        if (rec_size > s_meta.capacity || rec_size > used_remaining) {
+            LOG_ERROR(TAG, "Record size invalid (%" PRIu32 "), clearing queue", rec_size);
+            err = reset_meta_locked();
+            return (err == ESP_OK) ? ESP_ERR_INVALID_SIZE : err;
+        }
+
+        if (sample_index == index) {
+            if (max_registers < hdr.reg_count) {
+                return ESP_ERR_INVALID_SIZE;
+            }
+
+            if (payload_size > 0U) {
+                uint32_t payload_offset = cursor + sizeof(memory_record_header_t);
+                if ((payload_offset + payload_size) > s_meta.capacity) {
+                    LOG_ERROR(TAG, "Payload out-of-bounds, clearing queue");
+                    err = reset_meta_locked();
+                    return (err == ESP_OK) ? ESP_ERR_INVALID_SIZE : err;
+                }
+
+                err = read_at_locked(payload_offset, registers_out, payload_size);
+                if (err != ESP_OK) {
+                    return err;
+                }
+
+                uint16_t crc = crc16_modbus((const uint8_t *)registers_out, payload_size);
+                if (crc != hdr.payload_crc16) {
+                    return ESP_ERR_INVALID_CRC;
+                }
+            }
+
+            if (meta_out != NULL) {
+                meta_out->timestamp_s = hdr.timestamp_s;
+                meta_out->start_reg = hdr.start_reg;
+                meta_out->reg_count = hdr.reg_count;
+                meta_out->slave_addr = hdr.slave_addr;
+            }
+            return ESP_OK;
+        }
+
+        ++sample_index;
+        cursor = (cursor + rec_size) % s_meta.capacity;
+        used_remaining -= rec_size;
     }
 
     return ESP_ERR_NOT_FOUND;
@@ -539,6 +655,22 @@ esp_err_t memory_peek_modbus_sample(
 
     xSemaphoreTake(s_lock, portMAX_DELAY);
     esp_err_t err = read_sample_locked(false, meta_out, registers_out, max_registers);
+    xSemaphoreGive(s_lock);
+    return err;
+}
+
+esp_err_t memory_peek_modbus_sample_at(
+    uint32_t index,
+    memory_sample_meta_t *meta_out,
+    uint16_t *registers_out,
+    uint16_t max_registers
+)
+{
+    ESP_RETURN_ON_FALSE(s_ready, ESP_ERR_INVALID_STATE, TAG, "Memory not initialized");
+    ESP_RETURN_ON_FALSE(registers_out != NULL, ESP_ERR_INVALID_ARG, TAG, "registers_out is NULL");
+
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    esp_err_t err = read_sample_at_locked(index, meta_out, registers_out, max_registers);
     xSemaphoreGive(s_lock);
     return err;
 }

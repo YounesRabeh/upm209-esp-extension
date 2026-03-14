@@ -22,48 +22,10 @@ config MEMORY_SAMPLE_QUEUE_BYTES
 
 config MEMORY_MAX_REGISTERS
     int "Maximum registers per Modbus sample"
-    default 160
-    range 1 512
+    default 1084
+    range 1 4096
     help
       Upper bound for one sample payload, used as safety guard.
-
-menuconfig MEMORY_MANAGER_ENABLE
-    bool "Memory Manager"
-    default n
-
-if MEMORY_MANAGER_ENABLE
-
-config MEMORY_MANAGER_INGEST_QUEUE_LEN
-    int "Ingest queue length (samples)"
-    default 64
-    range 4 512
-
-config MEMORY_MANAGER_WRITER_TASK_STACK_SIZE
-    int "Memory writer task stack size"
-    default 4096
-    range 2048 16384
-
-config MEMORY_MANAGER_WRITER_TASK_PRIORITY
-    int "Memory writer task priority"
-    default 5
-    range 1 24
-
-config MEMORY_MANAGER_PERIOD_MS
-    int "Memory monitor period (ms)"
-    default 5000
-    range 500 60000
-
-config MEMORY_MANAGER_TASK_STACK_SIZE
-    int "Memory manager task stack size"
-    default 3072
-    range 2048 16384
-
-config MEMORY_MANAGER_TASK_PRIORITY
-    int "Memory manager task priority"
-    default 4
-    range 1 24
-
-endif
 
 choice MEMORY_OVERFLOW_POLICY
     prompt "Overflow policy"
