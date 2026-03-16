@@ -133,10 +133,11 @@ static void processing_compute_iqr_stats(
     *out_max = max_v;
 }
 
-static esp_err_t processing_decode_scaled_unsigned(
+static esp_err_t processing_decode_scaled(
     const uint16_t *words,
     uint16_t word_count,
     float scale,
+    bool is_signed,
     double *out_value
 )
 {
@@ -149,7 +150,35 @@ static esp_err_t processing_decode_scaled_unsigned(
         raw = (raw << 16U) | (uint64_t)words[i];
     }
 
-    *out_value = (double)raw * (double)scale;
+    if (!is_signed) {
+        *out_value = (double)raw * (double)scale;
+        return ESP_OK;
+    }
+
+    if (word_count == 1U) {
+        int16_t raw_s = (int16_t)words[0];
+        *out_value = (double)raw_s * (double)scale;
+        return ESP_OK;
+    }
+
+    if (word_count == 2U) {
+        int32_t raw_s = (int32_t)(((uint32_t)words[0] << 16U) | (uint32_t)words[1]);
+        *out_value = (double)raw_s * (double)scale;
+        return ESP_OK;
+    }
+
+    if (word_count == 3U) {
+        uint64_t raw24 = raw & 0x0000FFFFFFFFFFFFULL;
+        if ((raw24 & 0x0000800000000000ULL) != 0ULL) {
+            raw24 |= 0xFFFF000000000000ULL;
+        }
+        int64_t raw_s = (int64_t)raw24;
+        *out_value = (double)raw_s * (double)scale;
+        return ESP_OK;
+    }
+
+    int64_t raw_s = (int64_t)raw;
+    *out_value = (double)raw_s * (double)scale;
     return ESP_OK;
 }
 
@@ -301,10 +330,11 @@ esp_err_t processing_upm209_compute_window(
         }
 
         for (size_t s = 0; s < cycle_count; ++s) {
-            err = processing_decode_scaled_unsigned(
+            err = processing_decode_scaled(
                 &cycles[s].words[entry->word_offset],
                 reg->reg_count,
                 reg->scale,
+                reg->is_signed,
                 &values[s]
             );
             if (err != ESP_OK) {

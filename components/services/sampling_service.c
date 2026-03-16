@@ -20,7 +20,7 @@
 #define SS_MONITOR_PRIORITY        4
 #define SS_MONITOR_PERIOD_MS       5000U
 #define SS_PERSIST_RETRY_DELAY_MS  500U
-#define SS_STARTUP_CLEAR_PERSISTED 0
+#define SS_STARTUP_CLEAR_PERSISTED 1
 
 typedef struct {
     uint8_t slave_addr;
