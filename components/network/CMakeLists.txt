@@ -11,6 +11,7 @@ idf_component_register(
         wifi
         esp_wifi
         esp_http_client
+        esp-tls
         nvs_flash
 )
 
