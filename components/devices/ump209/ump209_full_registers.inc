@@ -272,8 +272,10 @@
     REG("System exported capacitive reactive energy", "varh", 0x04C4, WORDS_4, SCALE_DECI),
     REG("System imported inductive reactive energy", "varh", 0x04C8, WORDS_4, SCALE_DECI),
     REG("System exported inductive reactive energy", "varh", 0x04CC, WORDS_4, SCALE_DECI),
-    REG("Balance of system capacitive reactive energy (imp-exp)", "varh", 0x04D0, WORDS_4, SCALE_DECI),
-    REG("Balance of system inductive reactive energy (imp-exp)", "varh", 0x04D4, WORDS_4, SCALE_DECI),
+    //REG_S is a hot fix
+    REG_S("Balance of system capacitive reactive energy (imp-exp)", "varh", 0x04D0, WORDS_4, SCALE_DECI),
+    //maybe anche qui
+    REG_S("Balance of system inductive reactive energy (imp-exp)", "varh", 0x04D4, WORDS_4, SCALE_DECI),
     REG("Balance of system reactive energy (BAL-C + BAL-L)", "varh", 0x04D8, WORDS_4, SCALE_DECI),
 
     // ===== CHUNK 5: 0x0500 .. 0x063E =====

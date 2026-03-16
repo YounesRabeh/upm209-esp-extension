@@ -242,7 +242,7 @@ static bool processing_service_build_json_payload(
         if (!processing_json_append_fmt(
                 &w,
                 &remaining,
-                "{\"num_reg\":%u,\"value\":%.9g,\"word\":%u,\"min\":%.9g,\"max\":%.9g,\"unit\":",
+                "{\"num_reg\":%u,\"avg\":%.9g,\"word\":%u,\"min\":%.9g,\"max\":%.9g,\"unit\":",
                 (unsigned)m->num_reg,
                 m->value,
                 (unsigned)m->word,
@@ -301,7 +301,7 @@ static size_t processing_json_measurement_len(const processing_measurement_t *m)
     int fixed = snprintf(
         NULL,
         0,
-        "{\"num_reg\":%u,\"value\":%.9g,\"word\":%u,\"min\":%.9g,\"max\":%.9g,\"unit\":",
+        "{\"num_reg\":%u,\"avg\":%.9g,\"word\":%u,\"min\":%.9g,\"max\":%.9g,\"unit\":",
         (unsigned)m->num_reg,
         m->value,
         (unsigned)m->word,
