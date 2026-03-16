@@ -16,6 +16,7 @@
 #define PROCESSING_MAX_REQUEST_WORDS  125U
 #define PROCESSING_IQR_MIN_SAMPLES    4U
 #define PROCESSING_IQR_FACTOR         1.5
+#define PROCESSING_SIGNED_SIGN_BIT_MODE 1U
 
 typedef struct {
     const MultimeterRegister *reg;
@@ -155,6 +156,17 @@ static esp_err_t processing_decode_scaled(
         return ESP_OK;
     }
 
+#if PROCESSING_SIGNED_SIGN_BIT_MODE
+    // UPM209 "Sign" fields: MSB is sign bit (0=+, 1=-), magnitude in remaining bits.
+    const uint32_t total_bits = (uint32_t)word_count * 16U;
+    const uint64_t sign_mask = 1ULL << (total_bits - 1U);
+    const uint64_t magnitude_mask = sign_mask - 1ULL;
+    const bool is_negative = (raw & sign_mask) != 0ULL;
+    const int64_t magnitude = (int64_t)(raw & magnitude_mask);
+    const int64_t signed_value = is_negative ? -magnitude : magnitude;
+    *out_value = (double)signed_value * (double)scale;
+#else
+    // Alternative model: standard two's-complement signed integer.
     if (word_count == 1U) {
         int16_t raw_s = (int16_t)words[0];
         *out_value = (double)raw_s * (double)scale;
@@ -179,6 +191,7 @@ static esp_err_t processing_decode_scaled(
 
     int64_t raw_s = (int64_t)raw;
     *out_value = (double)raw_s * (double)scale;
+#endif
     return ESP_OK;
 }
 
