@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "esp_http_client.h"
+#include "esp_crt_bundle.h"
 #include "logging.h"
 
 #define TAG "INTERNET_SEND"
@@ -18,6 +19,10 @@ static esp_err_t internet_send_post(const char *json_payload, size_t payload_len
     esp_http_client_config_t config = {
         .url = CONFIG_INTERNET_TARGET_URL,
         .method = HTTP_METHOD_POST,
+        .timeout_ms = 15000,
+#if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+        .crt_bundle_attach = esp_crt_bundle_attach,
+#endif
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -29,6 +34,23 @@ static esp_err_t internet_send_post(const char *json_payload, size_t payload_len
     esp_http_client_set_post_field(client, json_payload, (int)payload_len);
 
     esp_err_t err = esp_http_client_perform(client);
+    int status_code = esp_http_client_get_status_code(client);
+    int64_t content_length = esp_http_client_get_content_length(client);
+    if (err == ESP_OK) {
+        LOG_INFO(
+            TAG,
+            "HTTP POST completed: status=%d content_length=%lld",
+            status_code,
+            (long long)content_length
+        );
+    } else {
+        LOG_ERROR(
+            TAG,
+            "HTTP POST failed at transport/connect stage: err=%s status=%d",
+            esp_err_to_name(err),
+            status_code
+        );
+    }
     esp_http_client_cleanup(client);
     return err;
 }
