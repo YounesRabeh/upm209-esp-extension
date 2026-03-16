@@ -1,76 +1,98 @@
 {
-	"schemaID" : "schemaUNICAM",
-	
-	"type": "object",
-	"properties": {
-		"companyID": {
-			"type": "string",
-			"description": "company name"
-	  	},
-	    "schemaID": {
-			"type": "string",
-			"description": "ID used to validate data"
-	  	},
-		"timestamp" : {
-			"type" : "integer",
-			"minimum" : 0,
-			"exclusiveMinimum" : true,
-			"description": "unixtime data retrieved"
-		},
-		"device_id": {
-			"type": "string",
-			"description": "serial number of the device"
-		},
-		"firmware_version": {
-			"type": "string",
-			"description": "firmware version current working on device"
-		},
-		"device_type": {
-			"type": "string",
-			"description": "short description"
-		},
-		"measurements": {
-			"type": "array",
-			"minItems" : 1,
-			"items": {
-		  		"type": "object",
-		  		"properties": {
-				"num_reg": {
-					"type": "integer",
-					"minimum": 0,
-					"description": "register number"
-				},
-				"value": {
-			  		"type": "number",
-					"description": "value of data read"
-				},
-				"word": {
-			  		"type": "integer",
-			  		"minimum": 1,
-					"description": "natural dimension of data"
-				},
-				"min": {
-			  		"type": "number",
-					"description": "minimum value read"
-				},
-				"max": {
-			  		"type": "number",
-					"description": "maximum value read"
-				},
-				"unit" : {
-					"type": "string",
-					"description": "unit measure of data"
-				},
-				"description": {
-                	"type": "string",
-					"description": "short description or name of data read"
-            	}
-			},
-		"required": ["num_reg", "value", "word", "unit", "min", "max", "description"]
-		}
-	  }
-	},
-	"required": ["companyID", "schemaID", "timestamp", "device_id", "firmware_version", "device_type", "measurements"]
-  }
-
-  
+  "schemaID": "schemaUNICAM",
+  "title": "UNICAM UPM209 Measurement Payload",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaID": {
+      "type": "string",
+      "const": "schemaUNICAM",
+      "description": "Schema identifier"
+    },
+    "companyID": {
+      "type": "string",
+      "const": "UNICAM",
+      "description": "Company identifier"
+    },
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unix timestamp"
+    },
+    "device_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Device serial number or identifier"
+    },
+    "firmware_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Firmware version running on the device"
+    },
+    "device_type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Device type"
+    },
+    "measurements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "num_reg": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Register number"
+          },
+          "avg": {
+            "type": "number",
+            "description": "Avg measured value"
+          },
+          "word": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Natural dimension of data"
+          },
+          "min": {
+            "type": "number",
+            "description": "Minimum measured value"
+          },
+          "max": {
+            "type": "number",
+            "description": "Maximum measured value"
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Measurement unit"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Measurement description"
+          }
+        },
+        "required": [
+          "num_reg",
+          "avg",
+          "word",
+          "min",
+          "max",
+          "unit",
+          "description"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schemaID",
+    "companyID",
+    "timestamp",
+    "device_id",
+    "firmware_version",
+    "device_type",
+    "measurements"
+  ]
+}
