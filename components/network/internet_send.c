@@ -10,6 +10,11 @@
 
 #define TAG "INTERNET_SEND"
 
+static bool internet_http_status_is_success(int status_code)
+{
+    return status_code >= 200 && status_code < 300;
+}
+
 static esp_err_t internet_send_post(const char *json_payload, size_t payload_len)
 {
     if (json_payload == NULL) {
@@ -43,6 +48,10 @@ static esp_err_t internet_send_post(const char *json_payload, size_t payload_len
             status_code,
             (long long)content_length
         );
+        if (!internet_http_status_is_success(status_code)) {
+            LOG_WARNING(TAG, "HTTP POST returned non-success status: %d", status_code);
+            err = ESP_FAIL;
+        }
     } else {
         LOG_ERROR(
             TAG,

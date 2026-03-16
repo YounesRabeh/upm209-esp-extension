@@ -20,7 +20,7 @@
 
 #define PS_WINDOW_SAMPLES       3U
 #define PS_TASK_STACK_SIZE      12288U
-#define PS_TASK_PRIORITY        4U
+#define PS_TASK_PRIORITY        6U
 #define PS_START_DELAY_MS       3000U
 #define PS_IDLE_DELAY_MS        1000U
 #define PS_RETRY_DELAY_MS       3000U
@@ -30,7 +30,7 @@
 #define PS_COMPANY_ID           "UNICAM"
 #define PS_SCHEMA_ID            "schemaUNICAM"
 #define PS_DEVICE_TYPE          "UPM209"
-#define PS_LOG_JSON_DEBUG       1U
+#define PS_LOG_JSON_DEBUG       0U
 
 static TaskHandle_t s_task_handle = NULL;
 static bool s_started = false;
@@ -622,7 +622,13 @@ static void processing_service_task(void *arg)
         heap_caps_free(json_payload_buf);
         if (err != ESP_OK) {
             ++s_send_retries;
-            LOG_WARNING(TAG, "Window send failed: err=0x%x (will retry)", err);
+            LOG_WARNING(
+                TAG,
+                "Upload failed: err=0x%x retry_in_ms=%u queue_pending=%" PRIu32,
+                err,
+                (unsigned)PS_RETRY_DELAY_MS,
+                memory_pending_samples()
+            );
             vTaskDelay(pdMS_TO_TICKS(PS_RETRY_DELAY_MS));
             continue;
         }
@@ -650,16 +656,19 @@ static void processing_service_task(void *arg)
         s_samples_consumed += popped;
         if (popped == PS_WINDOW_SAMPLES) {
             ++s_windows_sent;
+            uint32_t pending_after_send = memory_pending_samples();
             LOG_OK(
                 TAG,
-                "Window sent: n=%u measurements=%u ts=%" PRIu32 " sent=%" PRIu32 " retries=%" PRIu32 " parse_fail=%" PRIu32 " consumed=%" PRIu32,
+                "Upload OK: window=%u measurements=%u ts=%" PRIu32 " sent=%" PRIu32 " retries=%" PRIu32 " parse_fail=%" PRIu32 " consumed=%" PRIu32 " queue_pending=%" PRIu32 " used=%" PRIu32 "B",
                 (unsigned)PS_WINDOW_SAMPLES,
                 (unsigned)measurement_count,
                 newest_timestamp_s,
                 s_windows_sent,
                 s_send_retries,
                 s_parse_failures,
-                s_samples_consumed
+                s_samples_consumed,
+                pending_after_send,
+                memory_used_bytes()
             );
         } else {
             LOG_WARNING(
@@ -722,7 +731,8 @@ esp_err_t processing_service_start(void)
     s_started = true;
     LOG_OK(
         TAG,
-        "Started: window=%u expected_words=%u measurement_count=%u",
+        "Started: prio=%u window=%u expected_words=%u measurement_count=%u",
+        (unsigned)PS_TASK_PRIORITY,
         (unsigned)PS_WINDOW_SAMPLES,
         (unsigned)layout.expected_cycle_words,
         (unsigned)layout.measurement_count

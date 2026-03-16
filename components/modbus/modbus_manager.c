@@ -249,9 +249,9 @@ static esp_err_t modbus_sample_and_store_cycle(void)
 
     memset(s_fail_entries, 0, sizeof(s_fail_entries));
 
-    LOG_INFO(
+    LOG_DEBUG(
         TAG,
-        "CYCLE START: slave=%u entries=%" PRIu32,
+        "Cycle start: slave=%u entries=%" PRIu32,
         (unsigned)MB_SLAVE_ADDR,
         (uint32_t)set->size
     );
@@ -364,16 +364,27 @@ static esp_err_t modbus_sample_and_store_cycle(void)
         }
     }
 
-    LOG_INFO(
-        TAG,
-        "CYCLE SUMMARY: total=%" PRIu32 " block_ok=%" PRIu32 " fail=%" PRIu32 " skipped=%" PRIu32 " requests=%" PRIu32 " words=%" PRIu32,
-        total,
-        block_ok,
-        fail,
-        skipped,
-        requests,
-        cycle_words
-    );
+    if (fail == 0U && skipped == 0U) {
+        LOG_DEBUG(
+            TAG,
+            "Cycle summary: total=%" PRIu32 " ok=%" PRIu32 " req=%" PRIu32 " words=%" PRIu32,
+            total,
+            block_ok,
+            requests,
+            cycle_words
+        );
+    } else {
+        LOG_WARNING(
+            TAG,
+            "Cycle summary: total=%" PRIu32 " ok=%" PRIu32 " fail=%" PRIu32 " skipped=%" PRIu32 " req=%" PRIu32 " words=%" PRIu32,
+            total,
+            block_ok,
+            fail,
+            skipped,
+            requests,
+            cycle_words
+        );
+    }
 
     const uint32_t printed = (fail < MB_MAX_FAIL_REPORT_LINES) ? fail : MB_MAX_FAIL_REPORT_LINES;
     for (uint32_t i = 0U; i < printed; ++i) {
@@ -440,7 +451,7 @@ static esp_err_t modbus_sample_and_store_cycle(void)
 
     LOG_OK(
         TAG,
-        "Cycle sampled: start=0x%04X words=%" PRIu32 " ts=%" PRIu32,
+        "Cycle sampled: start=0x%04X words=%" PRIu32 " ts=%" PRIu32 " sink=ok",
         (unsigned)cycle_start_reg,
         cycle_words,
         timestamp_s
