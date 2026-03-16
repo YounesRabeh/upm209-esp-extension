@@ -18,7 +18,7 @@
 #define SS_WRITER_PRIORITY         5
 #define SS_MONITOR_STACK_SIZE      3072
 #define SS_MONITOR_PRIORITY        4
-#define SS_MONITOR_PERIOD_MS       5000U
+#define SS_MONITOR_PERIOD_MS       10000U
 #define SS_PERSIST_RETRY_DELAY_MS  500U
 #define SS_STARTUP_CLEAR_PERSISTED 1
 
@@ -175,14 +175,14 @@ static void sampling_monitor_task(void *arg)
         UBaseType_t pending = (s_queue != NULL) ? uxQueueMessagesWaiting(s_queue) : 0U;
         LOG_DEBUG(
             TAG,
-            "Queue status: pending=%u queued=%" PRIu32 " persisted=%" PRIu32 " dropped_oldest=%" PRIu32 " retries=%" PRIu32 " flash_pending=%" PRIu32 " used=%" PRIu32 "B",
+            "Queue monitor: ram_pending=%u flash_pending=%" PRIu32 " used=%" PRIu32 "B totals{queued=%" PRIu32 " persisted=%" PRIu32 " dropped_oldest=%" PRIu32 " retries=%" PRIu32 "}",
             (unsigned)pending,
+            memory_pending_samples(),
+            memory_used_bytes(),
             s_queued_total,
             s_persisted_total,
             s_dropped_oldest_total,
-            s_persist_retry_total,
-            memory_pending_samples(),
-            memory_used_bytes()
+            s_persist_retry_total
         );
         vTaskDelay(period_ticks);
     }
