@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -16,6 +17,7 @@ typedef struct MultimeterRegister {
     uint16_t reg_count;
     uint8_t function_code;
     float scale;
+    bool is_signed;
 } MultimeterRegister;
 
 /**

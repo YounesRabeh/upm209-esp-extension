@@ -8,8 +8,11 @@
 #define SCALE_CENTI_PERCENT 0.01f
 #define SCALE_ONE 1.0f
 #define UPM209_SIMPLE_SAMPLING 0U
-#define REG(name, unit, addr, words, scale) \
-    { name, unit, addr, words, TARGET_REGISTER_FUNC_READ_INPUT, scale }
+#define REG_U(name, unit, addr, words, scale) \
+    { name, unit, addr, words, TARGET_REGISTER_FUNC_READ_INPUT, scale, false }
+#define REG_S(name, unit, addr, words, scale) \
+    { name, unit, addr, words, TARGET_REGISTER_FUNC_READ_INPUT, scale, true }
+#define REG(name, unit, addr, words, scale) REG_U(name, unit, addr, words, scale)
 
 #define HARMONIC16(prefix, base) \
     REG(prefix " component 0 (DC)", "%", (base) + 0x00, WORDS_2, SCALE_CENTI_PERCENT), \
@@ -40,10 +43,10 @@ static const MultimeterRegister s_target_registers[] = {
 
     // ===== CHUNK 1: 0x0000 .. 0x0087 (reduced) =====
     REG("Phase 1-N Voltage", "V", 0x0000, WORDS_2, SCALE_MILLI),
-    REG("Phase 1 Current", "A", 0x000E, WORDS_2, SCALE_MILLI),
-    REG("Phase 1 Active Power", "W", 0x0018, WORDS_4, SCALE_MILLI),
-    REG("System Active Power", "W", 0x0024, WORDS_4, SCALE_MILLI),
-    REG("Phase 1 Power Factor", "-", 0x0048, WORDS_2, SCALE_MILLI),
+    REG_S("Phase 1 Current", "A", 0x000E, WORDS_2, SCALE_MILLI),
+    REG_S("Phase 1 Active Power", "W", 0x0018, WORDS_4, SCALE_MILLI),
+    REG_S("System Active Power", "W", 0x0024, WORDS_4, SCALE_MILLI),
+    REG_S("Phase 1 Power Factor", "-", 0x0048, WORDS_2, SCALE_MILLI),
     REG("Frequency", "Hz", 0x0072, WORDS_2, SCALE_MILLI),
 
     // ===== CHUNK 4: 0x0400 .. 0x04DB (reduced) =====
