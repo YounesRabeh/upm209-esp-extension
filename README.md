@@ -1,53 +1,136 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-P4 | ESP32-S2 | ESP32-S3 | Linux |
-| ----------------- | ----- | -------- | -------- | -------- | -------- | --------- | -------- | -------- | -------- | -------- | ----- |
+# UPM209 ESP Extension
 
-# Hello World Example
+Firmware ESP-IDF per `ESP32-S3` che legge misure elettriche da un contatore UPM209 via Modbus RTU, salva i campioni grezzi in LittleFS, elabora una finestra scorrevole con gestione outlier e invia payload JSON normalizzati a un endpoint HTTP remoto.
 
-Starts a FreeRTOS task to print "Hello World".
+## Funzionalita
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+- Campionamento periodico Modbus RTU della mappa registri UPM209 (default: range completo fino a `0x063E`)
+- Buffer dei campioni grezzi in RAM + coda persistente su LittleFS (partizione `storage`)
+- Elaborazione a finestra (3 campioni) con filtro outlier basato su IQR
+- Generazione payload JSON con metadati dispositivo (device id da MAC, versione firmware, timestamp)
+- Upload HTTP POST con logica di riconnessione e retry
+- Selezione modalita rete: `WiFi only`, `LTE only` oppure `AUTO (WiFi -> LTE fallback)`
+- Avvio centralizzato dei servizi e logging colorato custom
 
-## How to use example
+## Pipeline Dati
 
-Follow detailed instructions provided specifically for this example.
+1. `modbus_manager` legge i blocchi UPM209 ogni 2 secondi.
+2. `sampling_service` riceve le word grezze e le mette nella memoria persistente.
+3. `processing_service` aspetta 3 campioni, calcola min/avg/max per misura e costruisce il JSON.
+4. `internet_send` invia il payload a `CONFIG_INTERNET_TARGET_URL`.
+5. Se l'invio va a buon fine, i campioni consumati vengono rimossi dalla coda.
 
-Select the instructions depending on Espressif chip installed on your development board:
+## Default Runtime Attuali
 
-- [ESP32 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html)
-- [ESP32-S2 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/get-started/index.html)
+- Target: `esp32s3`
+- ESP-IDF nel lockfile: `5.4.1`
+- Modbus (hardcoded in `components/modbus/modbus_manager.c`):
+  - Porta UART: `1`
+  - TX: `GPIO7`
+  - RX: `GPIO8`
+  - RTS/DE: `GPIO4`
+  - Baud: `19200`
+  - Parita: `none`
+  - Indirizzo slave: `1`
+  - Periodo polling: `2000 ms`
+- Finestra processing: `3` campioni
+- Capacita coda LittleFS: `262144` byte (configurabile)
+- URL upload di default:
+  - `https://blockboxchain-api.beesoft.it/saveData`
 
+## Avvio Rapido
 
-## Example folder contents
+### 1) Prerequisiti
 
-The project **hello_world** contains one source file in C language [hello_world_main.c](main/hello_world_main.c). The file is located in folder [main](main).
+- ESP-IDF installato (consigliato: `v5.4.x`)
+- Board/toolchain ESP32-S3 funzionante (`idf.py --version`)
+- Contatore UPM209 collegato tramite trasceiver RS485
 
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt` files that provide set of directives and instructions describing the project's source files and targets (executable, library, or both).
+### 2) Configurazione
 
-Below is short explanation of remaining files in the project folder.
+```bash
+idf.py set-target esp32s3
+idf.py menuconfig
+```
+
+Sezioni menu principali:
+
+- `Internet Configuration`
+  - `INTERNET_TARGET_URL`
+  - Modalita rete (`AUTO`, `WIFI_ONLY`, `LTE_ONLY`)
+  - Autenticazione WiFi e credenziali
+- `Services Configuration`
+  - Abilita/disabilita internet, time, storage e modbus
+- `Storage Configuration`
+  - Dimensione coda, max registri, policy overflow
+- `Modbus-module Configuration`
+  - Abilita/disabilita Modbus manager
+
+### 3) Build e flash
+
+```bash
+idf.py build
+idf.py -p <PORT> flash monitor
+```
+
+## Struttura Progetto
 
 ```
-├── CMakeLists.txt
-├── pytest_hello_world.py      Python script used for automated testing
-├── main
-│   ├── CMakeLists.txt
-│   └── hello_world_main.c
-└── README.md                  This is the file you are currently reading
+.
+├── main/                         # app_main e startup
+├── components/
+│   ├── devices/ump209/           # Definizioni mappa registri UPM209
+│   ├── modbus/                   # Manager Modbus RTU e I/O
+│   ├── storage/                  # Coda persistente su LittleFS
+│   ├── processing/               # Calcolo finestra + gestione outlier
+│   ├── network/                  # Init/connect/send internet
+│   ├── wifi/                     # Gestione connessione/autenticazione WiFi
+│   ├── lte/                      # Astrazione LTE (attualmente stub)
+│   ├── services/                 # Orchestrazione servizi e task
+│   └── utils/                    # Utility di logging
+├── docs/                         # Schema payload e documenti di riferimento
+├── reports/                      # Note di validazione/discovery
+└── partitions.csv                # Include partizione LittleFS "storage" da 4MB
 ```
 
-For more information on structure and contents of ESP-IDF projects, please refer to Section [Build System](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html) of the ESP-IDF Programming Guide.
+## Formato Payload
 
-## Troubleshooting
+Schema di riferimento: `docs/JSON_schema_UPM209.json`.
 
-* Program upload failure
+Esempio:
 
-    * Hardware connection is not correct: run `idf.py -p PORT monitor`, and reboot your board to see if there are any output logs.
-    * The baud rate for downloading is too high: lower your baud rate in the `menuconfig` menu, and try again.
+```json
+{
+  "schemaID": "schemaUNICAM",
+  "companyID": "UNICAM",
+  "timestamp": 1710000000,
+  "device_id": "A1B2C3D4E5F6",
+  "firmware_version": "1",
+  "device_type": "UPM209",
+  "measurements": [
+    {
+      "num_reg": 24,
+      "avg": 1234.5,
+      "word": 4,
+      "min": 1229.1,
+      "max": 1238.0,
+      "unit": "W",
+      "description": "System Active Power"
+    }
+  ]
+}
+```
 
-## Technical support and feedback
+## Note e Limitazioni
 
-Please use the following feedback channels:
+- LTE e attualmente una implementazione stub (`components/lte/lte.c`) e non controlla ancora un modem reale.
+- I log di default ESP-IDF sono silenziati in `app_main`; usa i log `LOG_*` del progetto per la diagnostica.
+- La scelta del register-set e compile-time in `components/devices/ump209/ump209.c`:
+  - `UPM209_SIMPLE_SAMPLING = 0` -> set completo (`ump209_full_registers.inc`)
+  - `UPM209_SIMPLE_SAMPLING = 1` -> subset ridotto focalizzato su carichi AC
 
-* For technical queries, go to the [esp32.com](https://esp32.com/) forum
-* For a feature request or bug report, create a [GitHub issue](https://github.com/espressif/esp-idf/issues)
+## Riferimenti Utili
 
-We will get back to you as soon as possible.
+- Schema payload UPM209: `docs/JSON_schema_UPM209.json`
+- Report discovery registri: `reports/ump209_register_discovery_report.md`
+- Report validazione register-set: `reports/ump209_regset_validation_test_report.md`
