@@ -89,7 +89,6 @@ idf.py -p <PORT> flash monitor
 │   ├── services/                 # Orchestrazione servizi e task
 │   └── utils/                    # Utility di logging
 ├── docs/                         # Schema payload e documenti di riferimento
-├── reports/                      # Note di validazione/discovery
 └── partitions.csv                # Include partizione LittleFS "storage" da 4MB
 ```
 
