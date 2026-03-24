@@ -6,7 +6,14 @@
 
 /**
  * @brief Modbus master component for reading registers from Modbus slave devices.
- * This component provides functions to initialize the Modbus master and read holding/input registers from slave devices. It is used by the Modbus manager component for periodic sampling of Modbus data
+ * @param uart_num UART port number used by the Modbus stack.
+ * @param tx_pin GPIO number for UART TX.
+ * @param rx_pin GPIO number for UART RX.
+ * @param rts_pin GPIO number for UART RTS/DE (used for RS485 direction control).
+ * @param baudrate UART baud rate.
+ * @param parity UART parity mode.
+ * @param link_type Physical link mode (RS232 legacy or RS485).
+ * @return ESP_OK on success, or an appropriate error code on failure.
  */
 esp_err_t modbus_init(
     int uart_num,
@@ -23,10 +30,9 @@ esp_err_t modbus_init(
  * @param slave_addr Modbus slave address
  * @param start_reg Starting register address to read from
  * @param reg_count Number of registers to read
- * @param dest Pointer to a buffer where the read register values will be stored. The buffer
- * must be large enough to hold reg_count uint16_t values.
- * @returns ESP_OK on success, or an appropriate error code on failure.
- * Note: The Modbus master must be initialized before calling this function. The function will return ESP_ERR_INVALID_STATE if the master is not initialized.
+ * @param dest Output buffer for register values (must contain at least reg_count words)
+ * @return ESP_OK on success, or an appropriate error code on failure.
+ *         Returns ESP_ERR_INVALID_STATE if the Modbus master is not initialized.
  */
 esp_err_t modbus_read_holding_registers(
     uint8_t slave_addr,
@@ -40,10 +46,9 @@ esp_err_t modbus_read_holding_registers(
  * @param slave_addr Modbus slave address
  * @param start_reg Starting register address to read from
  * @param reg_count Number of registers to read
- * @param dest Pointer to a buffer where the read register values will be stored. The buffer
- * must be large enough to hold reg_count uint16_t values.
- * @returns ESP_OK on success, or an appropriate error code on failure.
- * Note: The Modbus master must be initialized before calling this function. The function will return
+ * @param dest Output buffer for register values (must contain at least reg_count words)
+ * @return ESP_OK on success, or an appropriate error code on failure.
+ *         Returns ESP_ERR_INVALID_STATE if the Modbus master is not initialized.
  */
 esp_err_t modbus_read_input_registers(
     uint8_t slave_addr,
@@ -56,7 +61,7 @@ esp_err_t modbus_read_input_registers(
  * @brief Probe a slave by attempting to read a single holding register.
  * @param slave_addr Modbus slave address to probe
  * @param reg_addr Register address used for the probe read
- * @returns ESP_OK if the slave responds successfully, otherwise an error code.
+ * @return ESP_OK if the slave responds successfully, otherwise an error code.
  */
 esp_err_t modbus_probe_holding_register(uint8_t slave_addr, uint16_t reg_addr);
 
@@ -64,13 +69,12 @@ esp_err_t modbus_probe_holding_register(uint8_t slave_addr, uint16_t reg_addr);
  * @brief Probe a slave by attempting to read a single input register.
  * @param slave_addr Modbus slave address to probe
  * @param reg_addr Register address used for the probe read
- * @returns ESP_OK if the slave responds successfully, otherwise an error code.
+ * @return ESP_OK if the slave responds successfully, otherwise an error code.
  */
 esp_err_t modbus_probe_input_register(uint8_t slave_addr, uint16_t reg_addr);
 
 /**
  * @brief Recover Modbus UART link after framing/timeouts.
- * Flushes pending RX bytes so next request starts from a clean state.
- * @returns ESP_OK on success or an error code on failure.
+ * @return ESP_OK on success or an error code on failure.
  */
 esp_err_t modbus_recover_link(void);
