@@ -66,6 +66,40 @@ Sezioni menu principali:
 - `Modbus-module Configuration`
   - Abilita/disabilita Modbus manager
 
+### Switch Rapidi (simple/full, dev on/off, ...)
+
+> [!NOTE]
+> Alcuni switch sono in `menuconfig`, altri sono compile-time nel codice.
+> Dopo ogni modifica compile-time, ricompila sempre il firmware con `idf.py build`.
+
+#### 1) Register set UPM209: `simple` vs `all registers`
+
+> [!TIP]
+> File: `components/devices/ump209/ump209.c`
+> - `#define UPM209_SIMPLE_SAMPLING 1U`: modalita `simple` (subset ridotto di registri)
+> - `#define UPM209_SIMPLE_SAMPLING 0U`: modalita `all registers` (set completo da `ump209_full_registers.inc`)
+
+#### 2) Dev mode storage: `ON` vs `OFF`
+
+> [!WARNING]
+> File: `components/services/sampling_service.c`
+> - `#define SS_STARTUP_CLEAR_PERSISTED 1`: Dev `ON`, svuota la coda persistente ad ogni boot
+> - `#define SS_STARTUP_CLEAR_PERSISTED 0`: Dev `OFF`, mantiene in coda i campioni non inviati dopo reboot/reset
+
+#### 3) Modbus debug verboso: `ON` vs `OFF`
+
+> [!NOTE]
+> File: `components/modbus/modbus_manager.c`
+> - `#define MB_VERBOSE_DEBUG 1`: log dettagliati su fallback/chunk/recovery
+> - `#define MB_VERBOSE_DEBUG 0`: log ridotti (default consigliato)
+
+#### 4) Switch via `menuconfig` (senza toccare codice)
+
+> [!NOTE]
+> Percorsi:
+> - Rete: `Internet Configuration -> Preferred network type` (`AUTO`, `WiFi only`, `LTE only`)
+> - Servizi: `Services Configuration` (`INTERNET_SERVICE_ENABLE`, `TIME_SERVICE_ENABLE`, `STORAGE_SERVICE_ENABLE`, `MODBUS_SERVICE_ENABLE`)
+
 ### 3) Build e flash
 
 ```bash
@@ -124,9 +158,7 @@ Esempio:
 
 - LTE e attualmente una implementazione stub (`components/lte/lte.c`) e non controlla ancora un modem reale.
 - I log di default ESP-IDF sono silenziati in `app_main`; usa i log `LOG_*` del progetto per la diagnostica.
-- La scelta del register-set e compile-time in `components/devices/ump209/ump209.c`:
-  - `UPM209_SIMPLE_SAMPLING = 0` -> set completo (`ump209_full_registers.inc`)
-  - `UPM209_SIMPLE_SAMPLING = 1` -> subset ridotto focalizzato su carichi AC
+- Per switch rapidi (`simple/full`, `dev on/off`, debug verboso, rete/servizi) vedi la sezione `Switch Rapidi`.
 
 ## Riferimenti Utili
 
