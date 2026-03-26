@@ -3,8 +3,6 @@ idf_component_register(
         "main.c"
     PRIV_REQUIRES 
         spi_flash
-    INCLUDE_DIRS 
-        "config"
     REQUIRES
         services
         utils
