@@ -24,7 +24,7 @@
 #define MB_UART_TXD               7
 #define MB_UART_RXD               8
 #define MB_UART_RTS               4
-#define MB_POLL_PERIOD_MS         2000U
+#define MB_POLL_PERIOD_MS         10000U
 #define MB_TASK_STACK_SIZE        4096
 #define MB_TASK_PRIORITY          5
 #define MB_INIT_DELAY_MS          500U
