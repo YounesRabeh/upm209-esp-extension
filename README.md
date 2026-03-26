@@ -6,7 +6,7 @@ Firmware ESP-IDF per `ESP32-S3` che legge misure elettriche da un contatore UPM2
 
 - Campionamento periodico Modbus RTU della mappa registri UPM209 (default: range completo fino a `0x063E`)
 - Buffer dei campioni grezzi in RAM + coda persistente su LittleFS (partizione `storage`)
-- Elaborazione a finestra (3 campioni) con filtro outlier basato su IQR
+- Elaborazione a finestra (6 campioni) con filtro outlier basato su IQR
 - Generazione payload JSON con metadati dispositivo (device id da MAC, versione firmware, timestamp)
 - Upload HTTP POST con logica di riconnessione e retry
 - Selezione modalita rete: `WiFi only`, `LTE only` oppure `AUTO (WiFi -> LTE fallback)`
@@ -14,9 +14,9 @@ Firmware ESP-IDF per `ESP32-S3` che legge misure elettriche da un contatore UPM2
 
 ## Pipeline Dati
 
-1. `modbus_manager` legge i blocchi UPM209 ogni 2 secondi.
+1. `modbus_manager` legge i blocchi UPM209 ogni 10 secondi.
 2. `sampling_service` riceve le word grezze e le mette nella memoria persistente.
-3. `processing_service` aspetta 3 campioni, calcola min/avg/max per misura e costruisce il JSON.
+3. `processing_service` aspetta 6 campioni, calcola min/avg/max per misura e costruisce il JSON.
 4. `internet_send` invia il payload a `CONFIG_INTERNET_TARGET_URL`.
 5. Se l'invio va a buon fine, i campioni consumati vengono rimossi dalla coda.
 
@@ -32,8 +32,8 @@ Firmware ESP-IDF per `ESP32-S3` che legge misure elettriche da un contatore UPM2
   - Baud: `19200`
   - Parita: `none`
   - Indirizzo slave: `1`
-  - Periodo polling: `2000 ms`
-- Finestra processing: `3` campioni
+  - Periodo polling: `10000 ms`
+- Finestra processing: `6` campioni
 - Capacita coda LittleFS: `262144` byte (configurabile)
 - URL upload di default:
   - `https://blockboxchain-api.beesoft.it/saveData`

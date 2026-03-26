@@ -18,7 +18,7 @@
 
 #define TAG "PROC_SVC"
 
-#define PS_WINDOW_SAMPLES       3U
+#define PS_WINDOW_SAMPLES       6U
 #define PS_TASK_STACK_SIZE      12288U
 #define PS_TASK_PRIORITY        6U
 #define PS_START_DELAY_MS       3000U
