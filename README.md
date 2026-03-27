@@ -48,10 +48,35 @@ Firmware ESP-IDF per `ESP32-S3` che legge misure elettriche da un contatore UPM2
 
 ### 2) Configurazione
 
+Il target base del progetto e `esp32s3` con flash da `8MB`.
+Se la scheda in uso non dispone di `8MB`, aggiorna `partitions.csv` e la configurazione flash prima del build.
+Dopo il clone, usa sempre `idf.py set-target esp32s3` prima di `idf.py menuconfig` o `idf.py build`.
+
 ```bash
 idf.py set-target esp32s3
 idf.py menuconfig
 ```
+
+### Come funziona `sdkconfig`
+
+> [!NOTE]
+> Il repository include `sdkconfig.defaults`, che contiene il frame condiviso del progetto:
+> target `esp32s3`, flash `8MB`, partition table, servizi abilitati e default non sensibili.
+> Dopo il clone, ESP-IDF usa questo file come base per generare il tuo `sdkconfig` locale.
+
+> [!WARNING]
+> `sdkconfig` e `sdkconfig.old` sono file locali e non vanno pushati.
+> Possono contenere dati sensibili in chiaro, ad esempio:
+> `CONFIG_INTERNET_TARGET_URL`, `CONFIG_WIFI_SSID`, `CONFIG_WIFI_PASSWORD`.
+
+> [!TIP]
+> Dopo il clone, apri `idf.py menuconfig` e imposta almeno questi campi:
+> - `Internet Configuration -> Remote Internet target URL`
+> - `Internet Configuration -> WiFi SSID`
+> - `Internet Configuration -> WiFi password`
+> - opzionalmente la modalita rete (`AUTO`, `WiFi only`, `LTE only`)
+>
+> Se `sdkconfig` non esiste ancora, verra creato automaticamente a partire da `sdkconfig.defaults` durante `menuconfig` o `idf.py build`.
 
 Sezioni menu principali:
 
@@ -68,9 +93,8 @@ Sezioni menu principali:
 
 ### Switch Rapidi (simple/full, dev on/off, ...)
 
-> [!NOTE]
-> Alcuni switch sono in `menuconfig`, altri sono compile-time nel codice.
-> Dopo ogni modifica compile-time, ricompila sempre il firmware con `idf.py build`.
+Alcuni switch sono in `menuconfig`, altri sono compile-time nel codice.
+Dopo ogni modifica compile-time, ricompila sempre il firmware con `idf.py build`.
 
 #### 1) Register set UPM209: `simple` vs `all registers`
 
@@ -88,10 +112,9 @@ Sezioni menu principali:
 
 #### 3) Modbus debug verboso: `ON` vs `OFF`
 
-> [!NOTE]
-> File: `components/modbus/modbus_manager.c`
-> - `#define MB_VERBOSE_DEBUG 1`: log dettagliati su fallback/chunk/recovery
-> - `#define MB_VERBOSE_DEBUG 0`: log ridotti (default consigliato)
+File: `components/modbus/modbus_manager.c`
+- `#define MB_VERBOSE_DEBUG 1`: log dettagliati su fallback/chunk/recovery
+- `#define MB_VERBOSE_DEBUG 0`: log ridotti (default consigliato)
 
 #### 4) Switch via `menuconfig` (senza toccare codice)
 
