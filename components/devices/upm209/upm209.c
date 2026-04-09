@@ -1,4 +1,4 @@
-#include "ump209.h"
+#include "upm209.h"
 
 #define WORDS_2 2U
 #define WORDS_4 4U
@@ -53,7 +53,7 @@ static const MultimeterRegister s_target_registers[] = {
     REG("Phase 1 imported active energy", "Wh", 0x0400, WORDS_4, SCALE_DECI),
     REG("System imported active energy", "Wh", 0x0418, WORDS_4, SCALE_DECI),
 #else
-    #include "ump209_full_registers.inc"
+    #include "upm209_full_registers.inc"
 #endif
 };
 
@@ -62,7 +62,7 @@ static const MultimeterRegisterSet s_target_register_set = {
     .size = sizeof(s_target_registers) / sizeof(s_target_registers[0])
 };
 
-const MultimeterRegisterSet *ump209_get_target_register_set(void)
+const MultimeterRegisterSet *upm209_get_target_register_set(void)
 {
     return &s_target_register_set;
 }

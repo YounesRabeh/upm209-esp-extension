@@ -11,7 +11,7 @@
 #include "logging.h"
 #include "modbus_master.h"
 #include "sdkconfig.h"
-#include "ump209.h"
+#include "upm209.h"
 
 #define TAG "MODBUS_MGR"
 
@@ -229,7 +229,7 @@ static esp_err_t modbus_read_block_resilient(
 
 static esp_err_t modbus_sample_and_store_cycle(void)
 {
-    const MultimeterRegisterSet *set = ump209_get_target_register_set();
+    const MultimeterRegisterSet *set = upm209_get_target_register_set();
     if (set == NULL || set->registers == NULL || set->size == 0U) {
         LOG_ERROR(TAG, "UPM209 register set unavailable");
         return ESP_ERR_INVALID_STATE;

@@ -6,11 +6,11 @@
 
 ## How It Works
 - `target_registers.h` defines generic register descriptors (`MultimeterRegister`, `MultimeterRegisterSet`).
-- `ump209/ump209.c` builds the UPM209 register table (full map or reduced map via compile-time flag).
-- `ump209_get_target_register_set()` returns a constant register set used by `modbus` and `processing`.
+- `upm209/upm209.c` builds the UPM209 register table (full map or reduced map via compile-time flag).
+- `upm209_get_target_register_set()` returns a constant register set used by `modbus` and `processing`.
 
 ## Main Files
 - `target_registers.h`
-- `ump209/ump209.h`
-- `ump209/ump209.c`
-- `ump209/ump209_full_registers.inc`
+- `upm209/upm209.h`
+- `upm209/upm209.c`
+- `upm209/upm209_full_registers.inc`
