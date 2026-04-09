@@ -7,7 +7,7 @@
 
 #include "logging.h"
 #include "target_registers.h"
-#include "ump209.h"
+#include "upm209.h"
 
 #define TAG "PROCESSING"
 
@@ -197,7 +197,7 @@ static esp_err_t processing_decode_scaled(
 
 static esp_err_t processing_build_layout(void)
 {
-    const MultimeterRegisterSet *set = ump209_get_target_register_set();
+    const MultimeterRegisterSet *set = upm209_get_target_register_set();
     if (set == NULL || set->registers == NULL || set->size == 0U) {
         LOG_ERROR(TAG, "UPM209 register set unavailable");
         return ESP_ERR_INVALID_STATE;

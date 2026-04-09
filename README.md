@@ -99,9 +99,9 @@ Dopo ogni modifica compile-time, ricompila sempre il firmware con `idf.py build`
 #### 1) Register set UPM209: `simple` vs `all registers`
 
 > [!TIP]
-> File: `components/devices/ump209/ump209.c`
+> File: `components/devices/upm209/upm209.c`
 > - `#define UPM209_SIMPLE_SAMPLING 1U`: modalita `simple` (subset ridotto di registri)
-> - `#define UPM209_SIMPLE_SAMPLING 0U`: modalita `all registers` (set completo da `ump209_full_registers.inc`)
+> - `#define UPM209_SIMPLE_SAMPLING 0U`: modalita `all registers` (set completo da `upm209_full_registers.inc`)
 
 #### 2) Dev mode storage: `ON` vs `OFF`
 
@@ -136,7 +136,7 @@ idf.py -p <PORT> flash monitor
 .
 ├── main/                         # app_main e startup
 ├── components/
-│   ├── devices/ump209/           # Definizioni mappa registri UPM209
+│   ├── devices/upm209/           # Definizioni mappa registri UPM209
 │   ├── modbus/                   # Manager Modbus RTU e I/O
 │   ├── storage/                  # Coda persistente su LittleFS
 │   ├── processing/               # Calcolo finestra + gestione outlier
@@ -186,5 +186,5 @@ Esempio:
 ## Riferimenti Utili
 
 - Schema payload UPM209: `docs/JSON_schema_UPM209.json`
-- Report discovery registri: `reports/ump209_register_discovery_report.md`
-- Report validazione register-set: `reports/ump209_regset_validation_test_report.md`
+- Report discovery registri: `reports/upm209_register_discovery_report.md`
+- Report validazione register-set: `reports/upm209_regset_validation_test_report.md`

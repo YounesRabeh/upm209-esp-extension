@@ -1,6 +1,6 @@
 idf_component_register(
     SRCS 
-        "ump209/ump209.c"
+        "upm209/upm209.c"
     INCLUDE_DIRS 
-        "." "ump209"
+        "." "upm209"
 )
