@@ -35,8 +35,6 @@ Firmware ESP-IDF per `ESP32-S3` che legge misure elettriche da un contatore UPM2
   - Periodo polling: `10000 ms`
 - Finestra processing: `6` campioni
 - Capacita coda LittleFS: `262144` byte (configurabile)
-- URL upload di default:
-  - `https://blockboxchain-api.beesoft.it/saveData`
 
 ## Avvio Rapido
 
