@@ -57,10 +57,10 @@ idf.py menuconfig
 
 ### Come funziona `sdkconfig`
 
-> [!NOTE]
-> Il repository include `sdkconfig.defaults`, che contiene il frame condiviso del progetto:
-> target `esp32s3`, flash `8MB`, partition table, servizi abilitati e default non sensibili.
-> Dopo il clone, ESP-IDF usa questo file come base per generare il tuo `sdkconfig` locale.
+
+Il repository include `sdkconfig.defaults`, che contiene il frame condiviso del progetto:
+target `esp32s3`, flash `8MB`, partition table, servizi abilitati e default non sensibili.
+Dopo il clone, ESP-IDF usa questo file come base per generare il tuo `sdkconfig` locale.
 
 > [!WARNING]
 > `sdkconfig` e `sdkconfig.old` sono file locali e non vanno pushati.
@@ -96,10 +96,10 @@ Dopo ogni modifica compile-time, ricompila sempre il firmware con `idf.py build`
 
 #### 1) Register set UPM209: `simple` vs `all registers`
 
-> [!TIP]
-> File: `components/devices/upm209/upm209.c`
-> - `#define UPM209_SIMPLE_SAMPLING 1U`: modalita `simple` (subset ridotto di registri)
-> - `#define UPM209_SIMPLE_SAMPLING 0U`: modalita `all registers` (set completo da `upm209_full_registers.inc`)
+
+File: `components/devices/upm209/upm209.c`
+- `#define UPM209_SIMPLE_SAMPLING 1U`: modalita `simple` (subset ridotto di registri)
+- `#define UPM209_SIMPLE_SAMPLING 0U`: modalita `all registers` (set completo da `upm209_full_registers.inc`)
 
 #### 2) Dev mode storage: `ON` vs `OFF`
 
@@ -116,10 +116,9 @@ File: `components/modbus/modbus_manager.c`
 
 #### 4) Switch via `menuconfig` (senza toccare codice)
 
-> [!NOTE]
-> Percorsi:
-> - Rete: `Internet Configuration -> Preferred network type` (`AUTO`, `WiFi only`, `LTE only`)
-> - Servizi: `Services Configuration` (`INTERNET_SERVICE_ENABLE`, `TIME_SERVICE_ENABLE`, `STORAGE_SERVICE_ENABLE`, `MODBUS_SERVICE_ENABLE`)
+Percorsi:
+- Rete: `Internet Configuration -> Preferred network type` (`AUTO`, `WiFi only`, `LTE only`)
+- Servizi: `Services Configuration` (`INTERNET_SERVICE_ENABLE`, `TIME_SERVICE_ENABLE`, `STORAGE_SERVICE_ENABLE`, `MODBUS_SERVICE_ENABLE`)
 
 ### 3) Build e flash
 
