@@ -62,11 +62,6 @@ Il repository include `sdkconfig.defaults`, che contiene il frame condiviso del 
 target `esp32s3`, flash `8MB`, partition table, servizi abilitati e default non sensibili.
 Dopo il clone, ESP-IDF usa questo file come base per generare il tuo `sdkconfig` locale.
 
-> [!WARNING]
-> `sdkconfig` e `sdkconfig.old` sono file locali e non vanno pushati.
-> Possono contenere dati sensibili in chiaro, ad esempio:
-> `CONFIG_INTERNET_TARGET_URL`, `CONFIG_WIFI_SSID`, `CONFIG_WIFI_PASSWORD`.
-
 > [!TIP]
 > Dopo il clone, apri `idf.py menuconfig` e imposta almeno questi campi:
 > - `Internet Configuration -> Remote Internet target URL`
@@ -75,6 +70,12 @@ Dopo il clone, ESP-IDF usa questo file come base per generare il tuo `sdkconfig`
 > - opzionalmente la modalita rete (`AUTO`, `WiFi only`, `LTE only`)
 >
 > Se `sdkconfig` non esiste ancora, verra creato automaticamente a partire da `sdkconfig.defaults` durante `menuconfig` o `idf.py build`.
+
+> [!WARNING]
+> `sdkconfig` e `sdkconfig.old` sono file locali e non vanno pushati.
+> Possono contenere dati sensibili in chiaro, ad esempio:
+> `CONFIG_INTERNET_TARGET_URL`, `CONFIG_WIFI_SSID`, `CONFIG_WIFI_PASSWORD`.
+
 
 Sezioni menu principali:
 
@@ -103,7 +104,7 @@ File: `components/devices/upm209/upm209.c`
 
 #### 2) Dev mode storage: `ON` vs `OFF`
 
-> [!WARNING]
+> [!NOTE]
 > File: `components/services/sampling_service.c`
 > - `#define SS_STARTUP_CLEAR_PERSISTED 1`: Dev `ON`, svuota la coda persistente ad ogni boot
 > - `#define SS_STARTUP_CLEAR_PERSISTED 0`: Dev `OFF`, mantiene in coda i campioni non inviati dopo reboot/reset
