@@ -184,5 +184,3 @@ Esempio:
 ## Riferimenti Utili
 
 - Schema payload UPM209: `docs/JSON_schema_UPM209.json`
-- Report discovery registri: `reports/upm209_register_discovery_report.md`
-- Report validazione register-set: `reports/upm209_regset_validation_test_report.md`
