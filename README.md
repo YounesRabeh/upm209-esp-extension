@@ -1,5 +1,4 @@
-# UPM209 ESP Extension
-
+![banner](docs/ESP.png)
 Firmware ESP-IDF per `ESP32-S3` che legge misure elettriche da un contatore UPM209 via Modbus RTU, salva i campioni grezzi in LittleFS, elabora una finestra scorrevole con gestione outlier e invia payload JSON normalizzati a un endpoint HTTP remoto.
 
 ## Funzionalita
