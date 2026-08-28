@@ -1,6 +1,6 @@
 # Devices Module
 
-[< Back to UPM209 ESP Extension](../../README.md)
+[< Back to UPM209 ESP Extension](../../README.md) • [Documentation Hub](../../docs/README.md)
 
 ## Responsibility
 - Define device-specific register metadata used by acquisition and processing layers.
