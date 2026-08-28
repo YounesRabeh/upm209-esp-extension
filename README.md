@@ -1,7 +1,29 @@
-![banner](docs/ESP.png)
-Firmware ESP-IDF per `ESP32-S3` che legge misure elettriche da un contatore UPM209 via Modbus RTU, salva i campioni grezzi in LittleFS, elabora una finestra scorrevole con gestione outlier e invia payload JSON normalizzati a un endpoint HTTP remoto.
+<a href="https://github.com/YounesRabeh/upm209-esp-extension"><img src="docs/ESP.png" alt="UPM209 ESP Extension" width="100%"></a>
 
-## Funzionalita
+<div align="center">
+
+  <p align="center">
+    <img src="https://img.shields.io/badge/Platform-ESP32--S3-E7352C?style=for-the-badge&amp;logo=espressif&amp;logoColor=white" alt="Platform: ESP32-S3">
+    <img src="https://img.shields.io/badge/Framework-ESP--IDF_6.0.1-E7352C?style=for-the-badge&amp;logo=espressif&amp;logoColor=white" alt="ESP-IDF 6.0.1">
+    <a href="https://github.com/YounesRabeh/upm209-esp-extension/releases"><img src="https://img.shields.io/badge/Release-View_Releases-2EA44F?style=for-the-badge&amp;logo=github&amp;logoColor=white" alt="View project releases"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-3DA639?style=for-the-badge" alt="MIT license"></a>
+    <a href="docs/README.md"><img src="https://img.shields.io/badge/Open-Documentation_Hub-0969DA?style=for-the-badge&amp;logo=readthedocs&amp;logoColor=white" alt="Open the documentation hub"></a>
+  </p>
+
+  <p>Firmware ESP-IDF per acquisizione, elaborazione e invio HTTP delle misure elettriche UPM209 su ESP32-S3.</p>
+
+  <p align="center">
+    <a href="#features">Features</a> •
+    <a href="#screenshots">Screenshots</a> •
+    <a href="#quick-start">Quick Start</a> •
+    <a href="#development">Development</a> •
+    <a href="#guides">Guides</a>
+  </p>
+</div>
+
+---
+
+## Features
 
 - Campionamento periodico Modbus RTU della mappa registri UPM209 (default: range completo fino a `0x063E`)
 - Buffer dei campioni grezzi in RAM + coda persistente su LittleFS (partizione `storage`)
@@ -11,18 +33,31 @@ Firmware ESP-IDF per `ESP32-S3` che legge misure elettriche da un contatore UPM2
 - Selezione modalita rete: `WiFi only`, `LTE only` oppure `AUTO (WiFi -> LTE fallback)`
 - Avvio centralizzato dei servizi e logging colorato custom
 
-## Pipeline Dati
+### Pipeline dati
 
-1. `modbus_manager` legge i blocchi UPM209 ogni 10 secondi.
-2. `sampling_service` riceve le word grezze e le mette nella memoria persistente.
-3. `processing_service` aspetta 6 campioni, calcola min/avg/max per misura e costruisce il JSON.
-4. `internet_send` invia il payload a `CONFIG_INTERNET_TARGET_URL`.
-5. Se l'invio va a buon fine, i campioni consumati vengono rimossi dalla coda.
+```mermaid
+stateDiagram-v2
+    direction LR
 
-## Default Runtime Attuali
+    state "modbus_manager" as ModbusManager
+    state "sampling_service" as SamplingService
+    state "processing_service" as ProcessingService
+    state "internet_send" as InternetSend
+    state "Campioni rimossi dalla coda" as Cleanup
+
+    [*] --> ModbusManager
+    ModbusManager --> SamplingService: blocchi UPM209 ogni 10 secondi
+    SamplingService --> ProcessingService: word grezze nella memoria persistente
+    ProcessingService --> InternetSend: 6 campioni → min/avg/max → JSON
+    InternetSend --> Cleanup: POST riuscito a CONFIG_INTERNET_TARGET_URL
+    Cleanup --> [*]
+```
+
+<details>
+<summary><strong>Default runtime attuali</strong></summary>
 
 - Target: `esp32s3`
-- ESP-IDF nel lockfile: `5.4.1`
+- ESP-IDF nel lockfile: `6.0.1`
 - Modbus (hardcoded in `components/modbus/modbus_manager.c`):
   - Porta UART: `1`
   - TX: `GPIO7`
@@ -35,31 +70,36 @@ Firmware ESP-IDF per `ESP32-S3` che legge misure elettriche da un contatore UPM2
 - Finestra processing: `6` campioni
 - Capacita coda LittleFS: `262144` byte (configurabile)
 
-## Avvio Rapido
+</details>
 
-### 1) Prerequisiti
+### Note e limitazioni
 
-- ESP-IDF installato (consigliato: `v5.4.x`)
+- LTE e attualmente una implementazione stub (`components/lte/lte.c`) e non controlla ancora un modem reale.
+- I log di default ESP-IDF sono silenziati in `app_main`; usa i log `LOG_*` del progetto per la diagnostica.
+- Per switch rapidi (`simple/full`, `dev on/off`, debug verboso, rete/servizi) vedi la sezione [Development](#development).
+
+## Screenshots
+
+...
+
+## Quick start
+
+### Prerequisiti
+
+- ESP-IDF installato (il lockfile usa `6.0.1`)
 - Board/toolchain ESP32-S3 funzionante (`idf.py --version`)
 - Contatore UPM209 collegato tramite trasceiver RS485
 
-### 2) Configurazione
+### Configurazione
 
-Il target base del progetto e `esp32s3` con flash da `8MB`.
-Se la scheda in uso non dispone di `8MB`, aggiorna `partitions.csv` e la configurazione flash prima del build.
-Dopo il clone, usa sempre `idf.py set-target esp32s3` prima di `idf.py menuconfig` o `idf.py build`.
+Il target base del progetto e `esp32s3` con flash da `8MB`. Se la scheda in uso non dispone di `8MB`, aggiorna `partitions.csv` e la configurazione flash prima del build. Dopo il clone, usa sempre `idf.py set-target esp32s3` prima di `idf.py menuconfig` o `idf.py build`.
 
 ```bash
 idf.py set-target esp32s3
 idf.py menuconfig
 ```
 
-### Come funziona `sdkconfig`
-
-
-Il repository include `sdkconfig.defaults`, che contiene il frame condiviso del progetto:
-target `esp32s3`, flash `8MB`, partition table, servizi abilitati e default non sensibili.
-Dopo il clone, ESP-IDF usa questo file come base per generare il tuo `sdkconfig` locale.
+Il repository include `sdkconfig.defaults`, che contiene il frame condiviso del progetto: target `esp32s3`, flash `8MB`, partition table, servizi abilitati e default non sensibili. ESP-IDF usa questo file come base per generare il tuo `sdkconfig` locale.
 
 > [!TIP]
 > Dopo il clone, apri `idf.py menuconfig` e imposta almeno questi campi:
@@ -71,10 +111,7 @@ Dopo il clone, ESP-IDF usa questo file come base per generare il tuo `sdkconfig`
 > Se `sdkconfig` non esiste ancora, verra creato automaticamente a partire da `sdkconfig.defaults` durante `menuconfig` o `idf.py build`.
 
 > [!WARNING]
-> `sdkconfig` e `sdkconfig.old` sono file locali e non vanno pushati.
-> Possono contenere dati sensibili in chiaro, ad esempio:
-> `CONFIG_INTERNET_TARGET_URL`, `CONFIG_WIFI_SSID`, `CONFIG_WIFI_PASSWORD`.
-
+> `sdkconfig` e `sdkconfig.old` sono file locali e non vanno pushati. Possono contenere dati sensibili in chiaro, ad esempio `CONFIG_INTERNET_TARGET_URL`, `CONFIG_WIFI_SSID` e `CONFIG_WIFI_PASSWORD`.
 
 Sezioni menu principali:
 
@@ -89,47 +126,42 @@ Sezioni menu principali:
 - `Modbus-module Configuration`
   - Abilita/disabilita Modbus manager
 
-### Switch Rapidi (simple/full, dev on/off, ...)
-
-Alcuni switch sono in `menuconfig`, altri sono compile-time nel codice.
-Dopo ogni modifica compile-time, ricompila sempre il firmware con `idf.py build`.
-
-#### 1) Register set UPM209: `simple` vs `all registers`
-
-
-File: `components/devices/upm209/upm209.c`
-- `#define UPM209_SIMPLE_SAMPLING 1U`: modalita `simple` (subset ridotto di registri)
-- `#define UPM209_SIMPLE_SAMPLING 0U`: modalita `all registers` (set completo da `upm209_full_registers.inc`)
-
-#### 2) Dev mode storage: `ON` vs `OFF`
-
-> [!NOTE]
-> File: `components/services/sampling_service.c`
-> - `#define SS_STARTUP_CLEAR_PERSISTED 1`: Dev `ON`, svuota la coda persistente ad ogni boot
-> - `#define SS_STARTUP_CLEAR_PERSISTED 0`: Dev `OFF`, mantiene in coda i campioni non inviati dopo reboot/reset
-
-#### 3) Modbus debug verboso: `ON` vs `OFF`
-
-File: `components/modbus/modbus_manager.c`
-- `#define MB_VERBOSE_DEBUG 1`: log dettagliati su fallback/chunk/recovery
-- `#define MB_VERBOSE_DEBUG 0`: log ridotti (default consigliato)
-
-#### 4) Switch via `menuconfig` (senza toccare codice)
-
-Percorsi:
-- Rete: `Internet Configuration -> Preferred network type` (`AUTO`, `WiFi only`, `LTE only`)
-- Servizi: `Services Configuration` (`INTERNET_SERVICE_ENABLE`, `TIME_SERVICE_ENABLE`, `STORAGE_SERVICE_ENABLE`, `MODBUS_SERVICE_ENABLE`)
-
-### 3) Build e flash
+### Build, flash e monitor
 
 ```bash
 idf.py build
 idf.py -p <PORT> flash monitor
 ```
 
-## Struttura Progetto
+## Development
 
-```
+Dopo ogni modifica compile-time, ricompila sempre il firmware con `idf.py build`.
+
+### Switch rapidi
+
+Gli switch compile-time richiedono una nuova esecuzione di `idf.py build` dopo ogni modifica.
+
+#### Compile-time
+
+| Switch | Valore attuale | Comportamento |
+| --- | --- | --- |
+| [`UPM209_SIMPLE_SAMPLING`](components/devices/upm209/upm209.c) | `0U` | `1U` = `simple`, subset ridotto; `0U` = `all registers`, set completo da `upm209_full_registers.inc` |
+| [`SS_STARTUP_CLEAR_PERSISTED`](components/services/sampling_service.c) | `1` | `1` = Dev `ON`, svuota la coda a ogni boot; `0` = Dev `OFF`, conserva i campioni dopo reboot/reset |
+| [`MB_VERBOSE_DEBUG`](components/modbus/modbus_manager.c) | `0` | `1` = log dettagliati su fallback/chunk/recovery; `0` = log ridotti, consigliato di default |
+
+> [!CAUTION]
+> La configurazione attuale, `SS_STARTUP_CLEAR_PERSISTED=1`, elimina i campioni persistenti a ogni avvio. Usala solo durante lo sviluppo.
+
+#### `menuconfig`
+
+| Area | Percorso | Opzioni |
+| --- | --- | --- |
+| Rete | `Internet Configuration -> Preferred network type` | `AUTO`, `WiFi only`, `LTE only` |
+| Servizi | `Services Configuration` | `INTERNET_SERVICE_ENABLE`, `TIME_SERVICE_ENABLE`, `STORAGE_SERVICE_ENABLE`, `MODBUS_SERVICE_ENABLE` |
+
+### Struttura progetto
+
+```text
 .
 ├── main/                         # app_main e startup
 ├── components/
@@ -146,11 +178,26 @@ idf.py -p <PORT> flash monitor
 └── partitions.csv                # Include partizione LittleFS "storage" da 4MB
 ```
 
-## Formato Payload
+## Guides
 
-Schema di riferimento: `docs/JSON_schema_UPM209.json`.
+Choose a guide by task, or browse the complete [documentation hub](docs/README.md):
 
-Esempio:
+| Task | Guide |
+| --- | --- |
+| Integrare la mappa registri UPM209 | [Devices module](components/devices/README.md) |
+| Configurare acquisizione Modbus RTU | [Modbus module](components/modbus/README.md) |
+| Gestire WiFi, LTE e invio HTTP | [Network module](components/network/README.md) |
+| Configurare la connessione WiFi | [WiFi module](components/wifi/README.md) |
+| Elaborare finestre e outlier | [Processing module](components/processing/README.md) |
+| Orchestrare campionamento e upload | [Services module](components/services/README.md) |
+| Gestire la coda persistente LittleFS | [Storage module](components/storage/README.md) |
+| Usare il logging condiviso | [Utils module](components/utils/README.md) |
+| Consultare il formato del payload | [Schema JSON UPM209](docs/JSON_schema_UPM209.json) |
+| Consultare il manuale del contatore | [Manuale UPM209](docs/MU_eflex-compteur-electrique.pdf) |
+
+### Formato payload
+
+Schema di riferimento: [`docs/JSON_schema_UPM209.json`](docs/JSON_schema_UPM209.json).
 
 ```json
 {
@@ -174,12 +221,18 @@ Esempio:
 }
 ```
 
-## Note e Limitazioni
+## Tech stack
 
-- LTE e attualmente una implementazione stub (`components/lte/lte.c`) e non controlla ancora un modem reale.
-- I log di default ESP-IDF sono silenziati in `app_main`; usa i log `LOG_*` del progetto per la diagnostica.
-- Per switch rapidi (`simple/full`, `dev on/off`, debug verboso, rete/servizi) vedi la sezione `Switch Rapidi`.
+<p align="left">
+  <a href="https://www.iso.org/standard/74528.html"><img src="https://img.shields.io/badge/C-Language-A8B9CC?style=for-the-badge&amp;logo=c&amp;logoColor=black" alt="C language"></a>
+  <a href="https://github.com/espressif/esp-idf"><img src="https://img.shields.io/badge/ESP--IDF-6.0.1-E7352C?style=for-the-badge&amp;logo=espressif&amp;logoColor=white" alt="ESP-IDF 6.0.1"></a>
+  <a href="https://www.espressif.com/en/products/socs/esp32-s3"><img src="https://img.shields.io/badge/ESP32--S3-Target-E7352C?style=for-the-badge&amp;logo=espressif&amp;logoColor=white" alt="ESP32-S3 target"></a>
+  <a href="https://components.espressif.com/components/espressif/esp-modbus"><img src="https://img.shields.io/badge/esp--modbus-2.1.2-2563EB?style=for-the-badge" alt="esp-modbus 2.1.2"></a>
+  <a href="https://components.espressif.com/components/joltwallet/littlefs"><img src="https://img.shields.io/badge/LittleFS-1.20.4-2E8B57?style=for-the-badge" alt="LittleFS 1.20.4"></a>
+</p>
 
-## Riferimenti Utili
+---
 
-- Schema payload UPM209: `docs/JSON_schema_UPM209.json`
+## License
+
+Distributed under the [MIT License](LICENSE).
