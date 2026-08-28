@@ -27,13 +27,13 @@
 
 ## Features
 
-- Periodic Modbus RTU sampling of the UPM209 register map (default: full range through `0x063E`)
-- Raw-sample buffer in RAM plus a persistent LittleFS queue (`storage` partition)
-- Six-sample window processing with IQR-based outlier filtering
-- JSON payload generation with device metadata (MAC-derived device ID, firmware version, timestamp)
-- HTTP POST upload with reconnection and retry logic
-- Network-mode selection: `WiFi only`, `LTE only`, or `AUTO (WiFi -> LTE fallback)`
-- Centralized service startup and custom colorized logging
+- 📡 Periodic Modbus RTU sampling of the UPM209 register map (default: full range through `0x063E`)
+- 💾 Raw-sample buffer in RAM plus a persistent LittleFS queue (`storage` partition)
+- 📊 Variable-size window processing (up to 64 samples) with IQR-based outlier filtering
+- 🧾 JSON payload generation with device metadata (MAC-derived device ID, firmware version, timestamp)
+- 🌐 HTTP POST upload with reconnection and retry logic
+- 📶 Network-mode selection: `WiFi only`, `LTE only`, or `AUTO (WiFi -> LTE fallback)`
+- 🖥️ Centralized service startup and custom colorized logging
 
 ### Data pipeline
 

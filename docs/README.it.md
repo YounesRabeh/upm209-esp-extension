@@ -27,13 +27,13 @@
 
 ## Funzionalità
 
-- Campionamento periodico Modbus RTU della mappa registri UPM209 (default: range completo fino a `0x063E`)
-- Buffer dei campioni grezzi in RAM + coda persistente su LittleFS (partizione `storage`)
-- Elaborazione a finestra (6 campioni) con filtro outlier basato su IQR
-- Generazione payload JSON con metadati dispositivo (device id da MAC, versione firmware, timestamp)
-- Invio HTTP POST con logica di riconnessione e nuovi tentativi
-- Selezione della modalità di rete: `WiFi only`, `LTE only` oppure `AUTO (WiFi -> LTE fallback)`
-- Avvio centralizzato dei servizi e logging colorato custom
+- 📡 Campionamento periodico Modbus RTU della mappa registri UPM209 (default: range completo fino a `0x063E`)
+- 💾 Buffer dei campioni grezzi in RAM + coda persistente su LittleFS (partizione `storage`)
+- 📊 Elaborazione a finestra variabile (fino a 64 campioni) con filtro outlier basato su IQR
+- 🧾 Generazione payload JSON con metadati dispositivo (device id da MAC, versione firmware, timestamp)
+- 🌐 Invio HTTP POST con logica di riconnessione e nuovi tentativi
+- 📶 Selezione della modalità di rete: `WiFi only`, `LTE only` oppure `AUTO (WiFi -> LTE fallback)`
+- 🖥️ Avvio centralizzato dei servizi e logging colorato custom
 
 ### Pipeline dei dati
 
