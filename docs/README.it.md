@@ -115,18 +115,14 @@ Il repository include `sdkconfig.defaults`, che contiene la base condivisa del p
 > [!WARNING]
 > `sdkconfig` e `sdkconfig.old` sono file locali e non vanno inviati nel repository. Possono contenere dati sensibili in chiaro, ad esempio `CONFIG_INTERNET_TARGET_URL`, `CONFIG_WIFI_SSID` e `CONFIG_WIFI_PASSWORD`.
 
-Sezioni principali del menu:
+### Panoramica di `menuconfig`
 
-- `Internet Configuration`
-  - `INTERNET_TARGET_URL`
-  - Modalità di rete (`AUTO`, `WIFI_ONLY`, `LTE_ONLY`)
-  - Autenticazione WiFi e credenziali
-- `Services Configuration`
-  - Abilita/disabilita internet, time, storage e Modbus
-- `Storage Configuration`
-  - Dimensione della coda, numero massimo di registri, policy di overflow
-- `Modbus-module Configuration`
-  - Abilita/disabilita il manager Modbus
+| Sezione | Configurazione | Opzioni disponibili |
+| --- | --- | --- |
+| `Internet Configuration` | `INTERNET_TARGET_URL`, autenticazione WiFi e credenziali | Modalità di rete: `AUTO`, `WIFI_ONLY` o `LTE_ONLY` |
+| `Services Configuration` | Servizi runtime | Abilita o disabilita internet, time, storage e Modbus |
+| `Storage Configuration` | Coda persistente | Dimensione della coda, numero massimo di registri e policy di overflow |
+| `Modbus-module Configuration` | Manager Modbus | Abilita o disabilita il manager |
 
 ### Compilazione, flash e monitor
 

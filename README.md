@@ -115,18 +115,14 @@ The repository includes `sdkconfig.defaults`, which provides the shared project 
 > [!WARNING]
 > `sdkconfig` and `sdkconfig.old` are local files and must not be pushed. They can contain clear-text sensitive data such as `CONFIG_INTERNET_TARGET_URL`, `CONFIG_WIFI_SSID`, and `CONFIG_WIFI_PASSWORD`.
 
-Main menu sections:
+### `menuconfig` overview
 
-- `Internet Configuration`
-  - `INTERNET_TARGET_URL`
-  - Network mode (`AUTO`, `WIFI_ONLY`, `LTE_ONLY`)
-  - WiFi authentication and credentials
-- `Services Configuration`
-  - Enable or disable internet, time, storage, and Modbus
-- `Storage Configuration`
-  - Queue size, maximum registers, overflow policy
-- `Modbus-module Configuration`
-  - Enable or disable the Modbus manager
+| Section | Configure | Available options |
+| --- | --- | --- |
+| `Internet Configuration` | `INTERNET_TARGET_URL`, WiFi authentication, and credentials | Network mode: `AUTO`, `WIFI_ONLY`, or `LTE_ONLY` |
+| `Services Configuration` | Runtime services | Enable or disable internet, time, storage, and Modbus |
+| `Storage Configuration` | Persistent queue | Queue size, maximum registers, and overflow policy |
+| `Modbus-module Configuration` | Modbus manager | Enable or disable the manager |
 
 ### Build, flash, and monitor
 
