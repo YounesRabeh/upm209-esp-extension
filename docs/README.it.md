@@ -7,7 +7,7 @@
     <img src="https://img.shields.io/badge/Framework-ESP--IDF_6.0.1-E7352C?style=for-the-badge&amp;logo=espressif&amp;logoColor=white" alt="ESP-IDF 6.0.1">
     <a href="https://github.com/YounesRabeh/upm209-esp-extension/releases"><img src="https://img.shields.io/badge/Rilasci-Vedi_i_rilasci-2EA44F?style=for-the-badge&amp;logo=github&amp;logoColor=white" alt="Vedi i rilasci del progetto"></a>
     <a href="../LICENSE"><img src="https://img.shields.io/badge/Licenza-MIT-3DA639?style=for-the-badge" alt="Licenza MIT"></a>
-    <a href="README.md"><img src="https://img.shields.io/badge/Documentation%20Hub-0969DA?style=for-the-badge&amp;logo=readthedocs&amp;logoColor=white" alt="Apri l'hub documentazione UPM209 ESP Extension"></a>
+    <a href="README.md"><img src="https://img.shields.io/badge/Documentation%20Hub-0969DA?style=for-the-badge&amp;logo=mdbook&amp;logoColor=white" alt="Apri l'hub documentazione UPM209 ESP Extension"></a>
   </p>
 
   <p>Firmware ESP-IDF per acquisizione, elaborazione e invio HTTP delle misure elettriche UPM209 su ESP32-S3.</p>

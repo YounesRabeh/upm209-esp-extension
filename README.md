@@ -7,7 +7,7 @@
     <img src="https://img.shields.io/badge/Framework-ESP--IDF_6.0.1-E7352C?style=for-the-badge&amp;logo=espressif&amp;logoColor=white" alt="ESP-IDF 6.0.1">
     <a href="https://github.com/YounesRabeh/upm209-esp-extension/releases"><img src="https://img.shields.io/badge/Release-View_Releases-2EA44F?style=for-the-badge&amp;logo=github&amp;logoColor=white" alt="View project releases"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-3DA639?style=for-the-badge" alt="MIT license"></a>
-    <a href="docs/README.md"><img src="https://img.shields.io/badge/Documentation%20Hub-0969DA?style=for-the-badge&amp;logo=readthedocs&amp;logoColor=white" alt="Open the UPM209 ESP Extension documentation hub"></a>
+    <a href="docs/README.md"><img src="https://img.shields.io/badge/Documentation%20Hub-0969DA?style=for-the-badge&amp;logo=mdbook&amp;logoColor=white" alt="Open the UPM209 ESP Extension documentation hub"></a>
   </p>
 
   <p>ESP-IDF firmware for acquiring, processing, and sending UPM209 electrical measurements over HTTP on ESP32-S3.</p>
