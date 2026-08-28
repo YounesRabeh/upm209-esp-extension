@@ -76,7 +76,9 @@ stateDiagram-v2
 
 ### Notes and limitations
 
-- LTE is currently a stub implementation ([`components/lte/lte.c`](components/lte/lte.c)) and does not yet control a real modem.
+> [!WARNING]
+> LTE is currently a stub implementation ([`components/lte/lte.c`](components/lte/lte.c)) and does not yet control a real modem.
+
 - Default ESP-IDF logs are silenced in `app_main`; use the project `LOG_*` logs for diagnostics.
 - For quick switches (`simple/full`, `dev on/off`, verbose debug, network/services), see [Development](#development).
 

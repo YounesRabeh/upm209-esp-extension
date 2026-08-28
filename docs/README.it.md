@@ -76,7 +76,9 @@ stateDiagram-v2
 
 ### Note e limitazioni
 
-- LTE è attualmente un'implementazione stub (`components/lte/lte.c`) e non controlla ancora un modem reale.
+> [!WARNING]
+> LTE è attualmente un'implementazione stub ([`components/lte/lte.c`](../components/lte/lte.c)) e non controlla ancora un modem reale.
+
 - I log predefiniti di ESP-IDF sono silenziati in `app_main`; usa i log `LOG_*` del progetto per la diagnostica.
 - Per gli switch rapidi (`simple/full`, `dev on/off`, debug verboso, rete/servizi), vedi la sezione [Sviluppo](#sviluppo).
 
