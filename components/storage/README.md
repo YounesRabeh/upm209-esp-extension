@@ -18,3 +18,7 @@
 - `memory.h` / `memory.c`
 - `memory_manager.h` / `memory_manager.c`
 - `Kconfig`
+
+## Capacity and payload modes
+
+See [Storage capacity and payload modes](../../docs/storage-payload-capacity.md) for the current raw-cycle retention limits, upload-window calculation, and full versus reduced JSON modes.

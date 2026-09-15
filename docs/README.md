@@ -19,3 +19,4 @@
 
 - [UPM209 JSON schema](JSON_schema_UPM209.json)
 - [UPM209 manual](MU_eflex-compteur-electrique.pdf)
+- [Storage capacity and payload modes](storage-payload-capacity.md)

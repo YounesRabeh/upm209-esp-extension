@@ -191,6 +191,7 @@ Scegli una guida in base all'attività, oppure esplora l'[hub documentazione](RE
 | Elaborare finestre e outlier | [Modulo Processing](../components/processing/README.md) |
 | Orchestrare campionamento e upload | [Modulo Services](../components/services/README.md) |
 | Gestire la coda persistente LittleFS | [Modulo Storage](../components/storage/README.md) |
+| Confrontare capacità della coda e modalità JSON completa/ridotta | [Capacità storage e modalità payload (EN)](storage-payload-capacity.md) |
 | Usare il logging condiviso | [Modulo Utils](../components/utils/README.md) |
 | Consultare il formato del payload | [Schema JSON UPM209](JSON_schema_UPM209.json) |
 | Consultare il manuale del contatore | [Manuale UPM209](MU_eflex-compteur-electrique.pdf) |

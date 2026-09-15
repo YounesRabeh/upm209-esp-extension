@@ -191,6 +191,7 @@ Choose a guide by task, or browse the complete [documentation hub](docs/README.m
 | Process windows and outliers | [Processing module](components/processing/README.md) |
 | Orchestrate sampling and upload | [Services module](components/services/README.md) |
 | Manage the persistent LittleFS queue | [Storage module](components/storage/README.md) |
+| Compare queue capacity and full/small JSON modes | [Storage capacity and payload modes](docs/storage-payload-capacity.md) |
 | Use shared logging | [Utils module](components/utils/README.md) |
 | Consult the payload format | [UPM209 JSON schema](docs/JSON_schema_UPM209.json) |
 | Consult the meter manual | [UPM209 manual](docs/MU_eflex-compteur-electrique.pdf) |
