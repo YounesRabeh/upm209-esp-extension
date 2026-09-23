@@ -81,3 +81,5 @@ Desktop.ini
 # VS Code local machine-specific files
 .vscode/settings.json
 .vscode/c_cpp_properties.json
+.vscode/cmake-kits.json
+build-cmake-tools/
