@@ -83,3 +83,4 @@ Desktop.ini
 .vscode/c_cpp_properties.json
 .vscode/cmake-kits.json
 build-cmake-tools/
+build-vscode/
