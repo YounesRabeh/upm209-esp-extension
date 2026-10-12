@@ -1,10 +1,5 @@
 # Security Policy
 
-## Supported versions
-
-This project does not currently publish release versions. Security fixes are currently applied to
-the default development branch.
-
 ## Reporting a vulnerability
 
 Please report suspected vulnerabilities privately through
