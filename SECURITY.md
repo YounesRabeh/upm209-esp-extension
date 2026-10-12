@@ -1,7 +1,5 @@
 # Security Policy
 
-## Reporting a vulnerability
-
 Please report suspected vulnerabilities privately through
 [GitHub Security Advisories](https://github.com/YounesRabeh/upm209-esp-extension/security/advisories/new).
 Include enough detail to reproduce the issue, the affected component, and any relevant ESP-IDF or
